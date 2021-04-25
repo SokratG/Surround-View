@@ -481,7 +481,7 @@ bool InternalCameraParams::read(const std::string& filepath, const int num, cons
 // ------------------------SECTION--------------------------
 // -----------SyncedCameraSource Implementation-------------
 
-int SyncedCameraSource::init(const std::string& param_filepath)
+int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& undistSize, const bool useUndist)
 {
 	bool camsOpenOk = true;
 	for (auto& cam : _cams){
@@ -510,14 +510,16 @@ int SyncedCameraSource::init(const std::string& param_filepath)
 			for (size_t k = 0; k < camIparams[i].K.size(); ++k)
 				K.at<double>(k) = camIparams[i].K[k];
 			cv::Mat D(camIparams[i].distortion);
-			const cv::Size cameraFrameSize(camIparams[i].captureResolution);
 			const cv::Size calibratedFrameSize(camIparams[i].resolution);
 			auto& uData = undistFrames[i];
-			cv::Mat newK = cv::getOptimalNewCameraMatrix(K, D, cameraFrameSize, 1, cameraFrameSize, &uData.roiFrame); // 0.0 ? 1.0
-		
+			cv::Mat newK;
+			if (useUndist)
+				newK = cv::getOptimalNewCameraMatrix(K, D, undistSize, 1,  undistSize, &uData.roiFrame); // 0.0 ? 1.0
+			else
+				newK = cv::getOptimalNewCameraMatrix(K, D, calibratedFrameSize, 1,  undistSize, &uData.roiFrame); // 0.0 ? 1.0
 			Ks[i] = newK;
 			cv::Mat mapX, mapY;
-			cv::initUndistortRectifyMap(K, D, cv::Mat(), newK, cameraFrameSize, CV_32FC1, mapX, mapY);
+			cv::initUndistortRectifyMap(K, D, cv::Mat(), newK, undistSize, CV_32FC1, mapX, mapY);
 			uData.remapX.upload(mapX);
 			uData.remapY.upload(mapY);
 			LOG_DEBUG("Generating undistort maps for camera - %i ... OK", i);

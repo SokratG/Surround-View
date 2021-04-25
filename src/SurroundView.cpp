@@ -7,6 +7,7 @@
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/cudaarithm.hpp>
 #include <opencv2/cudafilters.hpp>
+#include <opencv2/stitching/detail/blenders.hpp>
 
 //#define LOG
 
@@ -28,19 +29,14 @@ bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs, const std::ve
 	
 	cv::Size img_size = imgs[0].size();
 	
-	std::vector<cv::Mat> rescale_imgs(imgs_num);
+	std::vector<cv::Mat> cpu_imgs(imgs_num);
 	for (size_t i = 0; i < imgs_num; ++i){
-	    if (!work_set){
-		    work_scale = std::min(1.0, std::sqrt(registr_resol * 1e6 / imgs[i].size().area()));
-		    work_set = true;
-	    }
-	    imgs[i].download(rescale_imgs[i]);
-	    //cv::resize(rescale_imgs[i], rescale_imgs[i], cv::Size(), work_scale, work_scale, cv::INTER_AREA);
+	    imgs[i].download(cpu_imgs[i]);
 	}
 
 
 	AutoCalib autcalib(imgs_num);
-	bool res = autcalib.init(rescale_imgs, intrisicMat);
+	bool res = autcalib.init(cpu_imgs, intrisicMat);
 	if (!res){
 	    std::cerr << "Error can't autocalibrate camera parameters...\n";
 	    return false;
@@ -50,7 +46,7 @@ bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs, const std::ve
 	Ks_f = autcalib.getIntCameraParam();
 
 
-	res = warpImage(rescale_imgs);
+	res = warpImage(cpu_imgs);
 	if (!res){
 	    std::cerr << "Error can't build warp images...\n";
 	    return false;
@@ -68,6 +64,7 @@ bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs, const std::ve
 bool SurroundView::warpImage(const std::vector<cv::Mat>& imgs)
 {
         gpu_seam_masks = std::move(std::vector<cv::cuda::GpuMat>(imgs_num));
+        cpu_seam_masks = std::move(std::vector<cv::Mat>(imgs_num));
         corners = std::move(std::vector<cv::Point>(imgs_num));
         sizes = std::move(std::vector<cv::Size>(imgs_num));
         texXmap = std::move(std::vector<cv::cuda::GpuMat>(imgs_num));
@@ -88,7 +85,8 @@ bool SurroundView::warpImage(const std::vector<cv::Mat>& imgs)
 
 
 
-        cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::AffineWarper>();
+        //cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::PlaneWarper>();
+        cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::SphericalWarper>();
         //cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::CompressedRectilinearWarper>(2.f, 1.f);
 
         cv::Ptr<cv::detail::RotationWarper> warper = warper_creator->create(static_cast<float>(warped_image_scale * work_scale));
@@ -134,7 +132,8 @@ bool SurroundView::warpImage(const std::vector<cv::Mat>& imgs)
 		dilateFilter->apply(tempmask, gpu_dilate_mask);
 		cv::cuda::resize(gpu_dilate_mask, gpu_seam_mask, tempmask.size());
 		cv::cuda::bitwise_and(gpu_seam_mask, gpu_warpmasks[i], gpu_seam_masks[i]);
-		warper->buildMaps(sizes[i], Ks_f[i], cameras[i].R, xmap, ymap);
+		gpu_seam_masks[i].download(cpu_seam_masks[i]);
+		warper->buildMaps(imgs[i].size(), Ks_f[i], cameras[i].R, xmap, ymap);
 		texXmap[i].upload(xmap);
 		texYmap[i].upload(ymap);
 	}
@@ -187,21 +186,65 @@ bool SurroundView::prepareGainMatrices(const std::vector<cv::UMat>& warp_imgs)
 	return true;
 }
 
-bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs)
+
+bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::Mat& blend_img)
 {
     if (!isInit){
-        std::cerr << "SurroundView not initialize...\n";
+        std::cerr << "SurroundView was not initialized...\n";
         return false;
     }
 
     cv::cuda::GpuMat gpuimg_warped_s, gpuimg_warped;
+    cv::Mat t_img;
+
+    cv::detail::FeatherBlender blender(sharpness);
+
+    //cv::detail::MultiBandBlender blender(false, num_bands);
+    blender.prepare(cv::detail::resultRoi(corners, sizes));
 
     for(size_t i = 0; i < imgs_num; ++i){
 
-          cv::cuda::remap(*imgs[i], gpuimg_warped, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
+            cv::cuda::remap(*imgs[i], gpuimg_warped, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
 
+            gpuimg_warped.convertTo(gpuimg_warped_s, CV_16S, streamObj);
+
+            gpuimg_warped_s.download(t_img);
+
+            blender.feed(t_img, cpu_seam_masks[i], corners[i]);
     }
 
+    blender.blend(blend_img, cv::Mat());
+
+    blend_img.convertTo(blend_img, CV_8U);
+
+    return true;
+}
+
+bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::GpuMat& blend_img)
+{
+    if (!isInit){
+        std::cerr << "SurroundView was not initialized...\n";
+        return false;
+    }
+
+    cv::cuda::GpuMat gpuimg_warped_s, gpuimg_warped;
+    cv::cuda::GpuMat stitch, mask_;
+
+    CustomBlender customBlend;
+    customBlend.prepare(corners, sizes);
+
+    for(size_t i = 0; i < imgs_num; ++i){
+
+          cv::cuda::remap(*imgs[i], gpuimg_warped, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar());
+
+          gpuimg_warped.convertTo(gpuimg_warped_s, CV_16S);
+
+          customBlend.feed(gpuimg_warped_s, gpu_seam_masks[i], corners[i]);
+    }
+
+    customBlend.blend(stitch, mask_);
+
+    stitch.convertTo(blend_img, CV_8U);
 
     return true;
 }

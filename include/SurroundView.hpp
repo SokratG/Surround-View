@@ -36,13 +36,14 @@ private:
 	size_t imgs_num = 0;
 	double warped_image_scale = 1.0;
 	double work_scale = 1;
-        double registr_resol = 0.7;
+        double sharpness = 2.5f;
         int num_bands = 3;
 	bool work_set = false;
 	std::vector<cv::Mat> Ks_f;
 	std::vector<cv::detail::CameraParams> cameras;
 	/* optional */
 	std::vector<cv::cuda::GpuMat> gpu_seam_masks;
+        std::vector<cv::Mat> cpu_seam_masks;
 	std::vector<cv::cuda::GpuMat> gpu_gain_map;
 	std::vector<cv::Point> corners;
 	std::vector<cv::Size> sizes;
@@ -67,7 +68,8 @@ public:
 public:
         SurroundView() : mask_maxnorm_size(MAX_MASK_WIDTH, MAX_MASK_HEIGHT), mask_minnorm_size(MIN_MASK_WIDTH, MIN_MASK_HEIGHT) {}
 	bool init(const std::vector<cv::cuda::GpuMat>& imgs, const std::vector<cv::Mat>& intrisicMat);
-        bool stitch(const std::vector<cv::cuda::GpuMat*>& imgs);
+        bool stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::Mat& blend_img);
+        bool stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::GpuMat& blend_img);
 };
 
 

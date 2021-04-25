@@ -33,7 +33,7 @@ bool AutoCalib::init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat
 
 	if (pairwise_matches.size() < (imgs_num*imgs_num)){
 		std::cout << pairwise_matches.size() << "\n";
-		std::cerr << "Error not enough panorama images...\n";
+		std::cerr << "Error not enough calibrates images...\n";
 		return false;
 	}
 
