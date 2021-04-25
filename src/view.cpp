@@ -50,6 +50,7 @@ bool View::init(const int32 width, const int32 height)
 
     auto inner_radius = 0.35f;
     auto radius = 0.5f;
+    auto hole_radius = 0.1f;
     auto a = 0.5f;
     auto b = 0.5f;
     auto c = 0.7f;
@@ -57,7 +58,9 @@ bool View::init(const int32 width, const int32 height)
     Bowl bowl(inner_radius, radius, a, b, c);
     std::vector<float> data;
     std::vector<uint> idxs;
-    bool isgen = bowl.generate_mesh_uv(40.f, data, idxs);
+    //bool isgen = bowl.generate_mesh_uv(40.f, data, idxs);
+    //bool isgen = bowl.generate_mesh_uv_part(3.14159265359f, 40.f, data, idxs);
+    bool isgen = bowl.generate_mesh_uv_hole_part(3.14159265359f, 40.f, hole_radius, data, idxs);
 
     if (!isgen)
         return false;

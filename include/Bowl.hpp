@@ -29,6 +29,7 @@ private:
     float hole_rad;
     bool set_hole = false;
     bool useUV = false;
+    float polar_coord = 2 * PI;
 public:
     Bowl(const float inner_radius, const float radius, const float a, const float b, const float c, const float center[3] = default_center)
             : inner_rad(inner_radius), rad(radius), param_a(a), param_b(b), param_c(c), hole_rad(0.f)
@@ -42,12 +43,22 @@ public:
     {
             set_hole = false;
             useUV = false;
+            polar_coord = 2 * PI;
             return generate_mesh_(max_size_vert, vertices, indices);
     }
     bool generate_mesh_uv(const float max_size_vert, std::vector<float>& vertices, std::vector<uint>& indices)
     {
             set_hole = false;
             useUV = true;
+            polar_coord = 2 * PI;
+            return generate_mesh_(max_size_vert, vertices, indices);
+    }
+
+    bool generate_mesh_uv_part(const float part_polar, const float max_size_vert, std::vector<float>& vertices, std::vector<uint>& indices)
+    {
+            set_hole = false;
+            useUV = true;
+            polar_coord = part_polar;
             return generate_mesh_(max_size_vert, vertices, indices);
     }
 
@@ -56,13 +67,32 @@ public:
             set_hole = true;
             useUV = false;
             hole_rad = hole_radius;
+            polar_coord = 2 * PI;
             return generate_mesh_(max_size_vert, vertices, indices);
     }
+    bool generate_mesh_hole_part(const float part_polar, const float max_size_vert, const float hole_radius, std::vector<float>& vertices, std::vector<uint>& indices)
+    {
+            set_hole = true;
+            useUV = false;
+            hole_rad = hole_radius;
+            polar_coord = part_polar;
+            return generate_mesh_(max_size_vert, vertices, indices);
+    }
+
     bool generate_mesh_uv_hole(const float max_size_vert, const float hole_radius, std::vector<float>& vertices, std::vector<uint>& indices)
     {
             set_hole = true;
             useUV = true;
             hole_rad = hole_radius;
+            polar_coord = 2 * PI;
+            return generate_mesh_(max_size_vert, vertices, indices);
+    }
+    bool generate_mesh_uv_hole_part(const float part_polar, const float max_size_vert, const float hole_radius, std::vector<float>& vertices, std::vector<uint>& indices)
+    {
+            set_hole = true;
+            useUV = true;
+            hole_rad = hole_radius;
+            polar_coord = part_polar;
             return generate_mesh_(max_size_vert, vertices, indices);
     }
 
@@ -93,7 +123,7 @@ protected:
             auto texture_v = texture_u;
 
             auto r = meshgen::linspace(0.0f, rad, max_size_vert); // min_size = 0.f, max_size = 100.f,
-            auto theta = meshgen::linspace(0.f, 2 * PI, max_size_vert);
+            auto theta = meshgen::linspace(0.f, polar_coord, max_size_vert);
             auto mesh_pair = meshgen::meshgrid(r, theta);
 
             auto R = std::get<0>(mesh_pair);
@@ -120,12 +150,14 @@ protected:
                     find start level - level when disk passes from to elliptic paraboloid
             */
             auto min_y = 0.f;
+            auto idx_min_y = 0u; // index y - component when transition between disk and paraboloid
             for (int i = 0; i < grid_size; ++i) {
                     for (int j = 0; j < grid_size; ++j) {
                             auto x = x_grid[j + i * grid_size];
                             auto z = z_grid[j + i * grid_size];
                             if (lt_radius(x, z, inner_rad)) { // check level of paraboloid
                                     min_y = y_grid[j + i * grid_size];
+                                    idx_min_y = i;
                                     break;
                             }
                     }
@@ -137,6 +169,7 @@ protected:
             */
             auto half_grid = grid_size / 2;
             auto vertices_size = 0;
+            auto offset_idx_min_y = 0;
             for (int i = 0; i < grid_size; ++i) {
                     for (int j = 0; j < grid_size; ++j) {
                             auto x = x_grid[j + i * grid_size];
@@ -144,8 +177,10 @@ protected:
 
                             if (set_hole) { // check hole inside disk
                                     auto skip = lt_radius(x, z, hole_rad);
-                                    if (skip)
+                                    if (skip) {
+                                            offset_idx_min_y = i + 1;
                                             continue;
+                                    }
                             }
 
                             auto y = min_y;
@@ -160,7 +195,7 @@ protected:
                             if (useUV) { // texture coordinates
                                     auto u = texture_u[j];
                                     auto v = texture_v[i];
-                                    if (i == 0 && j == 0) // center disk
+                                    if (i == 0 && j == 0 &&  !set_hole) // center disk
                                         u = texture_u[half_grid];
                                     vertices.push_back(u);
                                     vertices.push_back(v);
@@ -172,45 +207,10 @@ protected:
             /*
                     generate indices by y-order
             */
-            int32 vert_size = vertices_size / _num_vertices;
+            if (set_hole)
+                    idx_min_y -= offset_idx_min_y;
             int32 last_vert = vertices_size / _num_vertices;
-
-            bool oddRow = false;
-            uint y = 0;
-            while (vert_size > 0) {
-                    if (!oddRow) // even rows: y == 0, y == 2; and so on
-                    {
-                            for (uint x = 0; x <= grid_size; ++x)
-                            {
-                                    vert_size--;
-                                    auto current = y * grid_size + x;
-                                    auto next = (y + 1) * grid_size + x;
-                                    if (next >= last_vert)
-                                            continue;
-                                    indices.push_back(current);
-                                    indices.push_back(next);
-                                    if (vert_size <= 0)
-                                            break;
-                            }
-                    }
-                    else
-                    {
-                            for (int x = grid_size; x >= 0; --x)
-                            {
-                                    vert_size--;
-                                    auto current = (y + 1) * grid_size + x;
-                                    auto prev = y * grid_size + x;
-                                    if (current >= last_vert)
-                                            continue;
-                                    indices.push_back(current);
-                                    indices.push_back(prev);
-                                    if (vert_size <= 0)
-                                            break;
-                            }
-                    }
-                    oddRow = !oddRow;
-                    y++;
-            }
+            generate_indices(indices, grid_size, idx_min_y, last_vert);
 
 
             return true;
@@ -218,6 +218,55 @@ protected:
     }
 
 private:
+    void generate_indices(std::vector<uint>& indices, const uint grid_size, const uint idx_min_y, const int32 last_vert) {
+        bool oddRow = false;
+
+        for (uint y = 0; y < grid_size - 1; ++y) {
+                if (!oddRow) // even rows: y == 0, y == 2; and so on
+                {
+                        for (uint x = 0; x < grid_size; ++x)
+                        {
+                                auto current = y * grid_size + x;
+                                auto next = (y + 1) * grid_size + x;
+                                /* change order when change disk to elliptic paraboloid */
+                                if (y == idx_min_y && x == 0) {
+                                        std::swap(current, next);
+                                        indices.push_back(current - grid_size);
+                                        indices.push_back(next);
+                                        indices.push_back(current);
+                                        continue;
+                                }
+                                if (set_hole && (current >= last_vert || next >= last_vert))
+                                        continue;
+                                indices.push_back(current);
+                                indices.push_back(next);
+                        }
+                }
+                else
+                {
+                        for (int x = grid_size - 1; x >= 0; --x)
+                        {
+                                auto current = (y + 1) * grid_size + x;
+                                auto prev = y * grid_size + x;
+                                /* change order when change disk to elliptic paraboloid */
+                                if (y == idx_min_y && x == grid_size - 1) {
+                                        indices.push_back(current - grid_size);
+                                        indices.push_back(current);
+                                        indices.push_back(prev);
+                                        continue;
+                                }
+                                if (set_hole && (current >= last_vert || prev >= last_vert))
+                                        continue;
+                                indices.push_back(current);
+                                indices.push_back(prev);
+
+                        }
+                }
+                oddRow = !oddRow;
+        }
+    }
+
+
     // compare inner radius and outer radius
     bool lt_radius(const float x, const float z, const float radius) {
             auto r1 = pow((x - cen[0]), 2);
