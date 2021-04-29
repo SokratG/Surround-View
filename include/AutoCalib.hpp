@@ -12,7 +12,7 @@ class AutoCalib
 {
 private:
         size_t imgs_num = 0;
-        double conf_thresh = 0.9;
+        double conf_thresh = 1.0;
         double match_conf = 0.6;
         int maxpoints = 1200;
         double work_scale = 1;

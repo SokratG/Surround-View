@@ -22,7 +22,7 @@ int CameraCycle()
 
 	cv::Size cameraSize(CAMERA_WIDTH, CAMERA_HEIGHT);
 	//cv::Size cameraSize(1280, 720);
-	cv::Size undistSize(1280, 720);
+	cv::Size undistSize(640, 480);
 	
 	source.setFrameSize(cameraSize);
 
@@ -50,7 +50,7 @@ int CameraCycle()
         //cv::VideoWriter invid("stream.avi", cv::VideoWriter::fourcc('D', 'I', 'V', 'X'), 20, cameraSize);
 	
 	cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
-	//cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
+	cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 
 
 	SurroundView sv;
@@ -63,19 +63,23 @@ int CameraCycle()
 			std::this_thread::sleep_for(1ms); 
 			continue;
 		}	
-		
-				
+//#define YES
+#ifdef YES
+		cv::imshow(win1, frames[1].gpuFrame);
+		cv::imshow(win2, frames[2].gpuFrame);
+#endif
+
 		if (!sv.getInit()){
 			std::vector<cv::cuda::GpuMat> datas {frames[1].gpuFrame, frames[2].gpuFrame};
 			sv.init(datas, Ks);
-			//cv::imshow(win1, frames[2].gpuFrame);
-			//cv::imshow(win2, frames[2].gpuFrame);
 		}
 		else{
 		    std::vector<cv::cuda::GpuMat*> datas {&frames[1].gpuFrame, &frames[2].gpuFrame};
-		    cv::Mat res;
+		    cv::cuda::GpuMat res;
+#ifndef YES
 		    sv.stitch(datas, res);
 		    cv::imshow(win1, res);
+#endif
 		}
 
 

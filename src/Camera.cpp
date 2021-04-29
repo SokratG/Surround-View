@@ -618,6 +618,7 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 		if (_undistort){
 			cv::cuda::remap(uData.remapedFrame, frames[i].gpuFrame, uData.remapX, uData.remapY, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), cudaStreamObj);
 			frames[i].gpuFrame = frames[i].gpuFrame(uData.roiFrame);
+			//std::cerr << frames[i].gpuFrame.size() << "\n";
 		}
 		
 	

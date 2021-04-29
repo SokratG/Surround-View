@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.8)
 
 set(CMAKE_CUDA_COMPILER /usr/local/cuda-9.0/bin/nvcc)
-set(CMAKE_NVCC_FLAGS "-Xptxas -O3 -use_fast_math -extra-device-vectorization -gencode arch=compute_62, code=sm_62")
+set(CMAKE_NVCC_FLAGS "-Xptxas -std=c++14 -O3 -use_fast_math -extra-device-vectorization -gencode arch=compute_62, code=sm_62")
+enable_language(CUDA)
+
 
 project(SurroundView LANGUAGES CXX CUDA)
 
@@ -61,6 +63,7 @@ set_target_properties(SurroundView
 			PROPERTIES OUTPUT_NAME "SurroundView" 
 			CUDA_SEPARABLE_COMPILATION ON
 )
+set_property(TARGET SurroundView PROPERTY CUDA_STANDARD 14)
 
 target_link_libraries(SurroundView PUBLIC ${TEST_LIBRARIES})
 target_include_directories(SurroundView PUBLIC ${TEST_INCLUDE_DIRS})

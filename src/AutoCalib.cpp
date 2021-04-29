@@ -76,9 +76,11 @@ bool AutoCalib::computeCameraParameters(const std::vector<cv::detail::ImageFeatu
 		cv::Mat R;
 		cameras[i].R.convertTo(R, CV_32F);
 		cameras[i].R = R;
+#ifdef NO_COMPILE
 		cameras[i].focal = intrisicMat[i].at<double>(0, 0);
 		cameras[i].ppx = intrisicMat[i].at<double>(0, 2);
 		cameras[i].ppy = intrisicMat[i].at<double>(1, 2);
+#endif
 	}
 
 	cv::Ptr<cv::detail::BundleAdjusterBase> adjuster = cv::makePtr<cv::detail::BundleAdjusterRay>();
