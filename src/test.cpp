@@ -65,8 +65,8 @@ int CameraCycle()
 		}	
 //#define YES
 #ifdef YES
-		cv::imshow(win1, frames[1].gpuFrame);
-		cv::imshow(win2, frames[2].gpuFrame);
+		//cv::imshow(win1, frames[1].gpuFrame);
+		//cv::imshow(win2, frames[2].gpuFrame);
 #endif
 
 		if (!sv.getInit()){
@@ -92,7 +92,6 @@ int CameraCycle()
 
 		if (cv::waitKey(1) > 0)
 			break;
-
 
 		const auto now = std::chrono::high_resolution_clock::now();
 		const auto dt = now - lastTick;

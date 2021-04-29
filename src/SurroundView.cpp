@@ -230,7 +230,7 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::
     cv::cuda::GpuMat gpuimg_warped_s, gpuimg_warped;
     cv::cuda::GpuMat stitch, mask_;
 
-    CUDABlender customBlend(sharpness);
+    CUDAFeatherBlender customBlend;
     customBlend.prepare(corners, sizes);
 
     for(size_t i = 0; i < imgs_num; ++i){
@@ -239,10 +239,10 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::
 
           gpuimg_warped.convertTo(gpuimg_warped_s, CV_16S, streamObj);
 
-          customBlend.feed_weight(gpuimg_warped_s, gpu_seam_masks[i], corners[i]);
+          customBlend.feed(gpuimg_warped_s, gpu_seam_masks[i], corners[i], streamObj);
     }
 
-    customBlend.blend_map(stitch, mask_, streamObj);
+    customBlend.blend(stitch, mask_, streamObj);
 
     stitch.convertTo(blend_img, CV_8U);
 

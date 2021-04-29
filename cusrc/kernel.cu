@@ -101,6 +101,18 @@ extern "C" void normalizeUsingWeightMapGpu32F(const cv::cuda::PtrStepf weight, c
 }
 
 
+extern "C" void normalizeUsingWeightMapGpu32F_Async(const cv::cuda::PtrStepf weight, cv::cuda::PtrStep<short> src,
+                                              const int width, const int height, cudaStream_t stream_dst)
+{
+    dim3 threads(32, 32);
+    dim3 grid(divUp(width, threads.x), divUp(height, threads.y));
+    normalizeUsingWeightKernel32F<<<grid, threads>>> (weight, src, width, height);
+
+    cudaStreamAttachMemAsync(stream_dst, src, 0 , cudaMemAttachGlobal);
+}
+
+
+
 __global__ void weightBlendCUDA_kernel(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
             cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, int width, int height, int dx, int dy)
 {
@@ -125,6 +137,19 @@ extern "C" void weightBlendCUDA(const cv::cuda::PtrStep<short> src, const cv::cu
     dim3 grid(divUp(img_size.width, threads.x), divUp(img_size.height, threads.y));
 
     weightBlendCUDA_kernel<<<grid, threads>>>(src, src_weight, dst, dst_weight, img_size.width, img_size.height, dx, dy);
+}
+
+extern "C" void weightBlendCUDA_Async(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
+    cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, const cv::Size& img_size,
+    int dx, int dy, cudaStream_t stream_dst, cudaStream_t stream_dst_weight)
+{
+    dim3 threads(32, 32);
+    dim3 grid(divUp(img_size.width, threads.x), divUp(img_size.height, threads.y));
+
+    weightBlendCUDA_kernel<<<grid, threads>>>(src, src_weight, dst, dst_weight, img_size.width, img_size.height, dx, dy);
+
+    cudaStreamAttachMemAsync(stream_dst, dst, 0 , cudaMemAttachGlobal);
+    cudaStreamAttachMemAsync(stream_dst_weight, dst_weight, 0 , cudaMemAttachGlobal);
 }
 
 
