@@ -13,7 +13,7 @@
 
 
 
-bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs, const std::vector<cv::Mat>& intrisicMat){
+bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	
 	if (isInit){
 	    std::cerr << "SurroundView already initialize...\n";
@@ -36,7 +36,7 @@ bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs, const std::ve
 
 
 	AutoCalib autcalib(imgs_num);
-	bool res = autcalib.init(cpu_imgs, intrisicMat);
+	bool res = autcalib.init(cpu_imgs);
 	if (!res){
 	    std::cerr << "Error can't autocalibrate camera parameters...\n";
 	    return false;

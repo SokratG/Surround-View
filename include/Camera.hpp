@@ -128,9 +128,11 @@ public:
 	void close(){
 		for (auto& cam : _cams)
 			cam.stopStream();
-		if (_cudaStream)
-			cudaStreamDestroy(_cudaStream);
-		_cudaStream = NULL;
+                for (auto& _cudaStream : _cudaStreams){
+                    if (_cudaStream)
+                            cudaStreamDestroy(_cudaStream);
+                    _cudaStream = NULL;
+                }
 	}
 
 	const CameraInfo& getCamera(int index) const { return _cams[index]; }
@@ -143,7 +145,9 @@ public:
 	}
 	
 private:
-	cudaStream_t _cudaStream = NULL;
+        std::array<cudaStream_t, 4> _cudaStreams {{NULL}};
+        std::array<cv::cuda::Stream, 4> cudaStreamObj{{cv::cuda::Stream::Null()}};
+        // cudaStream_t _cudaStream = NULL;
 };
 
 //bool stitch_frames(std::array<SyncedCameraSource::Frame, 4>& in, SyncedCameraSource::Frame& out, bool isMove=false);

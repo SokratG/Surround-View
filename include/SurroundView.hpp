@@ -67,7 +67,7 @@ public:
         bool getInit() const {return isInit;}
 public:
         SurroundView() : mask_maxnorm_size(MAX_MASK_WIDTH, MAX_MASK_HEIGHT), mask_minnorm_size(MIN_MASK_WIDTH, MIN_MASK_HEIGHT) {}
-	bool init(const std::vector<cv::cuda::GpuMat>& imgs, const std::vector<cv::Mat>& intrisicMat);
+        bool init(const std::vector<cv::cuda::GpuMat>& imgs);
         bool stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::Mat& blend_img);
         bool stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::GpuMat& blend_img);
 };

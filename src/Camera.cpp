@@ -15,6 +15,7 @@
 #include <linux/videodev2.h>
 #include <sys/mman.h>
 
+#include <omp.h>
 
 #include "cusrc/yuv2rgb.cuh"
 
@@ -494,10 +495,16 @@ int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& 
 	if (!camsOpenOk)
 		return -1;
 	
-	if (cudaStreamCreate(&_cudaStream) != cudaError::cudaSuccess){
-		_cudaStream = NULL;
-		LOG_ERROR("SyncedCameraSource: Failed to create cuda stream");
+	for (auto& _cudaStream : _cudaStreams){
+	    if (cudaStreamCreate(&_cudaStream) != cudaError::cudaSuccess){
+		    _cudaStream = NULL;
+		    LOG_ERROR("SyncedCameraSource: Failed to create cuda stream");
+	    }
 	}
+
+#ifndef NO_OMP
+      omp_set_num_threads(omp_get_max_threads());
+#endif
 	
 	if (_undistort){
 		for (size_t i = 0; i < _cams.size(); ++i){
@@ -603,31 +610,32 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 	
 
 	// do processing 
-	cv::cuda::Stream cudaStreamObj = cv::cuda::Stream::Null();
+	#pragma omp parallel for default(none) shared(buffs, frames)
 	for(size_t i = 0; i < _cams.size(); ++i){
 		auto& buff = buffs[i];
 		auto& dataBuffer = _cams[i].buffers[buff.index];
 		auto* cudaBuffer = _cams[i].cuda_out_buffer;
 	
-		
-		gpuConvertUYVY2RGB_async((uchar*) dataBuffer.start, cudaBuffer, frameSize.width, frameSize.height, _cudaStream);
+
+		gpuConvertUYVY2RGB_async((uchar*) dataBuffer.start, cudaBuffer, frameSize.width, frameSize.height, _cudaStreams[i]);
 		auto& uData = undistFrames[i];
 
 		uData.remapedFrame = cv::cuda::GpuMat(frameSize, CV_8UC3, cudaBuffer);
 
 		if (_undistort){
-			cv::cuda::remap(uData.remapedFrame, frames[i].gpuFrame, uData.remapX, uData.remapY, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), cudaStreamObj);
+			cv::cuda::remap(uData.remapedFrame, frames[i].gpuFrame, uData.remapX, uData.remapY,
+					cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), cudaStreamObj[i]);
 			frames[i].gpuFrame = frames[i].gpuFrame(uData.roiFrame);
-			//std::cerr << frames[i].gpuFrame.size() << "\n";
-		}
-		
-	
-	}	
-	cudaStreamObj.waitForCompletion();	
+		}	
+	}
+
+#ifdef NO_COMPILE
+	cudaStreamObj.waitForCompletion();
 
 	if (_cudaStream)
 		cudaStreamSynchronize(_cudaStream);
-	
+#endif
+
 	// enqueue buffer after processing
 	for(size_t i = 0; i < _cams.size(); ++i){
 		auto& buff = buffs[i];

@@ -92,6 +92,7 @@ __global__ void normalizeUsingWeightKernel32F(const cv::cuda::PtrStepf weight, c
     }
 }
 
+
 extern "C" void normalizeUsingWeightMapGpu32F(const cv::cuda::PtrStepf weight, cv::cuda::PtrStep<short> src,
                                               const int width, const int height)
 {

@@ -1,18 +1,28 @@
 cmake_minimum_required(VERSION 3.8)
 
-set(CMAKE_CUDA_COMPILER /usr/local/cuda-9.0/bin/nvcc)
-set(CMAKE_NVCC_FLAGS "-Xptxas -std=c++14 -O3 -use_fast_math -extra-device-vectorization -gencode arch=compute_62, code=sm_62")
-enable_language(CUDA)
-
-
 project(SurroundView LANGUAGES CXX CUDA)
 
 find_package(CUDA REQUIRED)
 
+enable_language(CUDA)
+set(CMAKE_CUDA_COMPILER /usr/local/cuda-9.0/bin/nvcc)
+set(
+         CMAKE_NVCC_FLAGS
+         ${CMAKE_NVCC_FLAGS};
+         -Xcompiler
+         -fopenmp
+         -O0
+         -use_fast_math
+         -gencode arch=compute_62,code=sm_62
+)
+set(CMAKE_CUDA_FLAGS)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_CXX_STANDARD 14)
 
+
+find_package(OpenMP REQUIRED)
+set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS})
 
 
 set(TEST_INCLUDE_DIRS)
@@ -48,12 +58,10 @@ list(APPEND TEST_LIBRARIES ${GLES_LIB})
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
-set(CMAKE_CONFIGURATION_TYPES "Debug" CACHE STRING "" FORCE)
-#set(CMAKE_CONFIGURATION_TYPES "Release" CACHE STRING "" FORCE)
 
 file(GLOB SOURCE_FILES 
 	${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/cusrc/*.cu
+        ${CMAKE_CURRENT_SOURCE_DIR}/cusrc/*.cu
 )
 
 
@@ -67,3 +75,5 @@ set_property(TARGET SurroundView PROPERTY CUDA_STANDARD 14)
 
 target_link_libraries(SurroundView PUBLIC ${TEST_LIBRARIES})
 target_include_directories(SurroundView PUBLIC ${TEST_INCLUDE_DIRS})
+
+target_compile_options(SurroundView PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_NVCC_FLAGS}>)

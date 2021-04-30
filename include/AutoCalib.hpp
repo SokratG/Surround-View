@@ -22,10 +22,10 @@ private:
         bool isInit = false;
 private:
         bool computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs, std::vector<cv::detail::MatchesInfo>& pairwise_matches, std::vector<cv::detail::ImageFeatures>& features);
-        bool computeCameraParameters(const std::vector<cv::detail::ImageFeatures>& features, const std::vector<cv::detail::MatchesInfo>& pairwise_matches, const std::vector<cv::Mat>& intrisicMat);
+        bool computeCameraParameters(const std::vector<cv::detail::ImageFeatures>& features, const std::vector<cv::detail::MatchesInfo>& pairwise_matches);
 public:
         AutoCalib(const size_t num_imgs) : imgs_num(num_imgs) {assert(num_imgs > 0);}
-        bool init(const std::vector<cv::Mat>& rescale_imgs, const std::vector<cv::Mat>& intrisicMat);
+        bool init(const std::vector<cv::Mat>& rescale_imgs);
 
         std::vector<cv::detail::CameraParams> getExtCameraParam() const {return cameras;}
         std::vector<cv::Mat> getIntCameraParam() const {return Ks_f;}

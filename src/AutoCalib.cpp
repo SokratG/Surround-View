@@ -7,7 +7,7 @@
 #include <iostream>
 
 
-bool AutoCalib::init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& intrisicMat)
+bool AutoCalib::init(const std::vector<cv::Mat>& imgs)
 {
 	if (isInit){
 		std::cerr << "Autocalibrator already initialize...\n";
@@ -38,7 +38,7 @@ bool AutoCalib::init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat
 	}
 
 
-	if (!computeCameraParameters(features, pairwise_matches, intrisicMat))
+	if (!computeCameraParameters(features, pairwise_matches))
 		return false;
 
 
@@ -62,7 +62,7 @@ bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs
 	return true;
 }
 
-bool AutoCalib::computeCameraParameters(const std::vector<cv::detail::ImageFeatures>& features, const std::vector<cv::detail::MatchesInfo>& pairwise_matches, const std::vector<cv::Mat>& intrisicMat)
+bool AutoCalib::computeCameraParameters(const std::vector<cv::detail::ImageFeatures>& features, const std::vector<cv::detail::MatchesInfo>& pairwise_matches)
 {
 
 	cv::detail::HomographyBasedEstimator est;
