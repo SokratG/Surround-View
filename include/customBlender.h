@@ -7,6 +7,7 @@ Simple blender which puts one image over another.
 #include "opencv2/stitching/detail/util.hpp"
 #include <cuda_runtime.h>
 
+
 class CUDABlender
 {
 private:
@@ -52,11 +53,12 @@ private:
         cudaStream_t _cudaStreamDst;
         cudaStream_t _cudaStreamDst_weight;
 public:
-        CUDAFeatherBlender(float sharpness = 0.02f);
+        CUDAFeatherBlender(const float sharpness = 0.02f);
         ~CUDAFeatherBlender();
 
         void prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes);
 
+        void prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes, const std::vector<cv::cuda::GpuMat>& masks);
 
         void prepare(cv::Rect dst_roi);
 
@@ -67,12 +69,15 @@ public:
         void blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj);
 
 private:
-        void createWeightMap(const cv::cuda::GpuMat& mask, cv::cuda::GpuMat& weight_map, cv::cuda::Stream& streamObj);
-
+        void createWeightMap(const cv::cuda::GpuMat& mask, cv::cuda::GpuMat& weight_map, cv::cuda::Stream& streamObj = cv::cuda::Stream::Null());
 public:
         cv::cuda::GpuMat dst_, dst_mask_;
-        cv::cuda::GpuMat weight_map_, dst_weight_map_;
+        cv::cuda::GpuMat dst_weight_map_;
         cv::Rect dst_roi_;
+        std::vector<cv::cuda::GpuMat> weight_maps_;
+        int numBlocks_;
+        int idx_weight_map_;
         float sharpness_;
+        bool use_cache_weight_ = false;
 };
 

@@ -495,17 +495,24 @@ int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& 
 	if (!camsOpenOk)
 		return -1;
 	
+	numBlocks = 0;
+	numThreads = 0;
+
+	cudaDeviceProp cuProp;
+	cudaGetDeviceProperties(&cuProp, 0);
+	numBlocks = cuProp.maxThreadsPerBlock >> cuProp.multiProcessorCount;
+	numThreads = cuProp.maxThreadsPerBlock >> 1;
+
+
 	for (auto& _cudaStream : _cudaStreams){
 	    if (cudaStreamCreate(&_cudaStream) != cudaError::cudaSuccess){
 		    _cudaStream = NULL;
 		    LOG_ERROR("SyncedCameraSource: Failed to create cuda stream");
 	    }
 	}
-
-#ifndef NO_OMP
-      omp_set_num_threads(omp_get_max_threads());
-#endif
 	
+
+
 	if (_undistort){
 		for (size_t i = 0; i < _cams.size(); ++i){
 			if (param_filepath.empty()){
@@ -593,31 +600,31 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 	// dequeue buffers all cameras
 	std::array<v4l2_buffer, 4> buffs{};
 	for(size_t i = 0; i < _cams.size(); ++i){
-		auto& buff = buffs[i];
-		std::memset(&buff, 0, sizeof(v4l2_buffer));
-		buff.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-		buff.memory = V4L2_MEMORY_MMAP;
-		
-		const auto& c = _cams[i];
-		auto fd = c.fd;
-		if (xioctl(fd, VIDIOC_DQBUF, &buff) < 0){
-			LOG_ERROR("ioctl(VIDIOC_DQBUF) failed (errno=%i) (%s)", errno, strerror(errno));
-			assert(0);
-			return false;
-		}
-		assert(buff.index >= 0 && buff.index < c.buffers.size());
+	      auto& buff = buffs[i];
+	      std::memset(&buff, 0, sizeof(v4l2_buffer));
+	      buff.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	      buff.memory = V4L2_MEMORY_MMAP;
+
+	      const auto& c = _cams[i];
+	      auto fd = c.fd;
+	      if (xioctl(fd, VIDIOC_DQBUF, &buff) < 0){
+		      LOG_ERROR("ioctl(VIDIOC_DQBUF) failed (errno=%i) (%s)", errno, strerror(errno));
+		      assert(0);
+		      return false;
+	      }
+	      assert(buff.index >= 0 && buff.index < c.buffers.size());
 	}
 	
 
-	// do processing 
+	// do processing
 	#pragma omp parallel for default(none) shared(buffs, frames)
 	for(size_t i = 0; i < _cams.size(); ++i){
 		auto& buff = buffs[i];
 		auto& dataBuffer = _cams[i].buffers[buff.index];
 		auto* cudaBuffer = _cams[i].cuda_out_buffer;
 	
-
-		gpuConvertUYVY2RGB_async((uchar*) dataBuffer.start, cudaBuffer, frameSize.width, frameSize.height, _cudaStreams[i]);
+		gpuConvertUYVY2RGB_async((uchar*) dataBuffer.start, cudaBuffer, frameSize.width, frameSize.height,
+					  numBlocks, numThreads, _cudaStreams[i]);
 		auto& uData = undistFrames[i];
 
 		uData.remapedFrame = cv::cuda::GpuMat(frameSize, CV_8UC3, cudaBuffer);

@@ -9,7 +9,7 @@
 #include <opencv2/cudafilters.hpp>
 #include <opencv2/stitching/detail/blenders.hpp>
 
-//#define LOG
+#include <omp.h>
 
 
 
@@ -53,6 +53,9 @@ bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	}
 
 
+	cuBlender = std::make_shared<CUDAFeatherBlender>(sharpness);
+	cuBlender->prepare(corners, sizes, gpu_seam_masks);
+
 	isInit = true;
 
 
@@ -64,7 +67,6 @@ bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs){
 bool SurroundView::warpImage(const std::vector<cv::Mat>& imgs)
 {
         gpu_seam_masks = std::move(std::vector<cv::cuda::GpuMat>(imgs_num));
-        cpu_seam_masks = std::move(std::vector<cv::Mat>(imgs_num));
         corners = std::move(std::vector<cv::Point>(imgs_num));
         sizes = std::move(std::vector<cv::Size>(imgs_num));
         texXmap = std::move(std::vector<cv::cuda::GpuMat>(imgs_num));
@@ -132,7 +134,6 @@ bool SurroundView::warpImage(const std::vector<cv::Mat>& imgs)
 		dilateFilter->apply(tempmask, gpu_dilate_mask);
 		cv::cuda::resize(gpu_dilate_mask, gpu_seam_mask, tempmask.size());
 		cv::cuda::bitwise_and(gpu_seam_mask, gpu_warpmasks[i], gpu_seam_masks[i]);
-		gpu_seam_masks[i].download(cpu_seam_masks[i]);
 		warper->buildMaps(imgs[i].size(), Ks_f[i], cameras[i].R, xmap, ymap);
 		texXmap[i].upload(xmap);
 		texYmap[i].upload(ymap);
@@ -143,7 +144,6 @@ bool SurroundView::warpImage(const std::vector<cv::Mat>& imgs)
 	    std::cerr << "Error: fail build gain compensator matrices...\n";
 	    return false;
 	}
-
 
 	return true;
 }
@@ -187,39 +187,6 @@ bool SurroundView::prepareGainMatrices(const std::vector<cv::UMat>& warp_imgs)
 }
 
 
-bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::Mat& blend_img)
-{
-    if (!isInit){
-        std::cerr << "SurroundView was not initialized...\n";
-        return false;
-    }
-
-    cv::cuda::GpuMat gpuimg_warped_s, gpuimg_warped;
-    cv::Mat t_img;
-
-    cv::detail::FeatherBlender blender(sharpness);
-
-    //cv::detail::MultiBandBlender blender(false, num_bands);
-    blender.prepare(cv::detail::resultRoi(corners, sizes));
-
-    for(size_t i = 0; i < imgs_num; ++i){
-
-            cv::cuda::remap(*imgs[i], gpuimg_warped, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
-
-            gpuimg_warped.convertTo(gpuimg_warped_s, CV_16S, streamObj);
-
-            gpuimg_warped_s.download(t_img);
-
-            blender.feed(t_img, cpu_seam_masks[i], corners[i]);
-    }
-
-    blender.blend(blend_img, cv::Mat());
-
-    blend_img.convertTo(blend_img, CV_8U);
-
-    return true;
-}
-
 bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::GpuMat& blend_img)
 {
     if (!isInit){
@@ -230,22 +197,38 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::
     cv::cuda::GpuMat gpuimg_warped_s, gpuimg_warped;
     cv::cuda::GpuMat stitch, mask_;
 
-    CUDAFeatherBlender customBlend;
-    customBlend.prepare(corners, sizes);
-
+    #pragma omp parallel for default(none) shared(imgs) private(gpuimg_warped, gpuimg_warped_s)
     for(size_t i = 0; i < imgs_num; ++i){
 
           cv::cuda::remap(*imgs[i], gpuimg_warped, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
 
           gpuimg_warped.convertTo(gpuimg_warped_s, CV_16S, streamObj);
 
-          customBlend.feed(gpuimg_warped_s, gpu_seam_masks[i], corners[i], streamObj);
+          cuBlender->feed(gpuimg_warped_s, gpu_seam_masks[i], corners[i], streamObj);
+
     }
 
-    customBlend.blend(stitch, mask_, streamObj);
+    cuBlender->blend(stitch, mask_, streamObj);
 
-    stitch.convertTo(blend_img, CV_8U);
+#ifdef COLOR_CORRECTION
 
+    stitch.convertTo(gpuimg_warped, CV_8U, streamObj);
+
+    cv::cuda::cvtColor(gpuimg_warped, gpuimg_warped, cv::COLOR_RGB2YCrCb, 0, streamObj);
+
+    cv::cuda::split(gpuimg_warped, inrgb, streamObj);
+
+    cv::cuda::equalizeHist(inrgb[0], inrgb[0], streamObj);
+
+    cv::cuda::merge(inrgb, gpuimg_warped, streamObj);
+
+    cv::cuda::cvtColor(gpuimg_warped, blend_img, cv::COLOR_YCrCb2RGB, 0, streamObj);
+
+#else
+
+    stitch.convertTo(blend_img, CV_8U, streamObj);
+
+#endif
     return true;
 }
 

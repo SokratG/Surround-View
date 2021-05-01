@@ -2,7 +2,7 @@
 #include "SurroundView.hpp"
 #include <csignal>
 #include "display.hpp"
-
+#include <omp.h>
 
 
 static bool finish = false;
@@ -18,6 +18,10 @@ void sig_handler(int signo)
 int CameraCycle()
 {
 	cv::setNumThreads(4);
+#ifndef NO_OMP
+	omp_set_num_threads(omp_get_max_threads());
+#endif
+
 	SyncedCameraSource source;
 
 	cv::Size cameraSize(CAMERA_WIDTH, CAMERA_HEIGHT);
@@ -64,8 +68,9 @@ int CameraCycle()
 #ifdef YES
 		cv::imshow(win1, frames[1].gpuFrame);
 		cv::imshow(win2, frames[2].gpuFrame);
+		//cv::imshow(win2, frames[0].gpuFrame);
 #endif
-
+#ifndef YES
 		if (!sv.getInit()){
 			std::vector<cv::cuda::GpuMat> datas {frames[1].gpuFrame, frames[2].gpuFrame};
 			sv.init(datas);
@@ -73,19 +78,19 @@ int CameraCycle()
 		else{
 		    std::vector<cv::cuda::GpuMat*> datas {&frames[1].gpuFrame, &frames[2].gpuFrame};
 		    cv::cuda::GpuMat res;
-#ifndef YES
+
 		    sv.stitch(datas, res);
 		    cv::imshow(win1, res);
-#endif
-		}
 
+		}
+#endif
 
 /*
 		bool okRender = dp.render(frames);
 		if (!okRender)
 		  break;
 */
-		
+
 
 		if (cv::waitKey(1) > 0)
 			break;

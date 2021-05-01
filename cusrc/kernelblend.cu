@@ -154,3 +154,23 @@ extern "C" void weightBlendCUDA_Async(const cv::cuda::PtrStep<short> src, const 
 }
 
 
+
+extern "C" void weightBlendCUDAnum_Async(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
+    cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, const cv::Size& img_size,
+    int dx, int dy, int numBlocks, cudaStream_t stream_dst, cudaStream_t stream_dst_weight)
+{
+    dim3 threads(32, 32);
+    auto blockSize = numBlocks;
+    dim3 blockDimSize(blockSize, blockSize);
+
+    weightBlendCUDA_kernel<<<blockDimSize, threads>>>(src, src_weight, dst, dst_weight, img_size.width, img_size.height, dx, dy);
+
+    cudaStreamAttachMemAsync(stream_dst, dst, 0 , cudaMemAttachGlobal);
+    cudaStreamAttachMemAsync(stream_dst_weight, dst_weight, 0 , cudaMemAttachGlobal);
+}
+
+
+
+
+
+

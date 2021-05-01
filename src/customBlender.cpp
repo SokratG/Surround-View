@@ -16,12 +16,16 @@ extern "C" {
 	void weightBlendCUDA_Async(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
 	    cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, const cv::Size& img_size, int dx, int dy,
 				   cudaStream_t stream_dst, cudaStream_t stream_dst_weight);
+	void weightBlendCUDAnum_Async(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
+	    cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, const cv::Size& img_size,
+	    int dx, int dy, int numBlocks, cudaStream_t stream_dst, cudaStream_t stream_dst_weight);
 	void normalizeUsingWeightMapGpu32F_Async(const cv::cuda::PtrStepf weight, cv::cuda::PtrStep<short> src,
 						      const int width, const int height, cudaStream_t stream_dst);
 }
 
 static constexpr float WEIGHT_EPS = 1e-5f;
 
+// ------------------------------- CUDABlender --------------------------------
 
 CUDABlender::CUDABlender()
 {
@@ -95,9 +99,10 @@ void CUDABlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::c
 
 
 
+// ------------------------------- CUDAFeatherBlender --------------------------------
 
-
-CUDAFeatherBlender::CUDAFeatherBlender(float sharpness) : sharpness_(sharpness)
+CUDAFeatherBlender::CUDAFeatherBlender(const float sharpness) :
+      sharpness_(sharpness), numBlocks_(0), idx_weight_map_(0)
 {
 
     if (cudaStreamCreate(&_cudaStreamDst) != cudaError::cudaSuccess)
@@ -105,6 +110,10 @@ CUDAFeatherBlender::CUDAFeatherBlender(float sharpness) : sharpness_(sharpness)
     if (cudaStreamCreate(&_cudaStreamDst_weight) != cudaError::cudaSuccess)
             _cudaStreamDst_weight = NULL;
 
+    cudaDeviceProp cuProp;
+    cudaGetDeviceProperties(&cuProp, 0);
+    constexpr auto shift_block_size = 6;
+    numBlocks_ = cuProp.maxThreadsPerBlock >> shift_block_size;
 }
 
 CUDAFeatherBlender::~CUDAFeatherBlender()
@@ -147,7 +156,7 @@ void CUDAFeatherBlender::createWeightMap(const cv::cuda::GpuMat& mask, cv::cuda:
 
 }
 
-
+#define NUM_THREADS_BLEND_ASYNC
 void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, const cv::Point& tl, cv::cuda::Stream& streamObj)
 {
 
@@ -156,11 +165,24 @@ void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, c
 	int dx = tl.x - dst_roi_.x;
 	int dy = tl.y - dst_roi_.y;
 
-	createWeightMap(_mask, weight_map_, streamObj);
-	if (_cudaStreamDst && _cudaStreamDst_weight)
-	    weightBlendCUDA(_img, weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy);
+	std::unique_ptr<cv::cuda::GpuMat> weight_map_ = std::make_unique<cv::cuda::GpuMat>();
+	if (!use_cache_weight_)
+	    createWeightMap(_mask, *weight_map_, streamObj);
+	else{
+	    weight_map_ = std::make_unique<cv::cuda::GpuMat>(weight_maps_[idx_weight_map_]);
+	    use_cache_weight_ += 1;
+	}
+
+	if (_cudaStreamDst && _cudaStreamDst_weight){
+#ifdef NUM_THREADS_BLEND_ASYNC
+	    weightBlendCUDAnum_Async(_img, *weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy, numBlocks_, _cudaStreamDst, _cudaStreamDst_weight);
+#else
+	    weightBlendCUDA_Async(_img, *weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy, _cudaStreamDst, _cudaStreamDst_weight);
+#endif
+	}
 	else
-	    weightBlendCUDA_Async(_img, weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy, _cudaStreamDst, _cudaStreamDst_weight);
+	    weightBlendCUDA(_img, *weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy);
+
 }
 
 
@@ -178,14 +200,27 @@ void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, c
 
      cv::cuda::GpuMat mask;
      cv::cuda::compare(dst_mask_, 0, mask, cv::CMP_EQ, streamObj);
-     dst_.setTo(cv::Scalar::all(0), mask);
-     dst_.copyTo(dst);
-     dst_mask_.copyTo(dst_mask);
+     dst_.setTo(cv::Scalar::all(0), mask, streamObj);
+     dst_.copyTo(dst, streamObj);
+     dst_mask_.copyTo(dst_mask, streamObj);
 
-     dst_.release();
-     dst_mask_.release();
+     dst_.setTo(cv::Scalar::all(0));
+     dst_mask_.setTo(cv::Scalar::all(0));
+     dst_weight_map_.setTo(cv::Scalar::all(0));
+     use_cache_weight_ = 0;
  }
 
 
+
+void CUDAFeatherBlender::prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes, const std::vector<cv::cuda::GpuMat>& masks)
+{
+    prepare(cv::detail::resultRoi(corners, sizes));
+    weight_maps_ = std::move(std::vector<cv::cuda::GpuMat>(sizes.size()));
+
+    for (auto i = 0; i < masks.size(); ++i)
+        createWeightMap(masks[i], weight_maps_[i]);
+
+    use_cache_weight_ = true;
+}
 
 
