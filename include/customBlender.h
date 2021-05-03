@@ -62,11 +62,11 @@ public:
 
         void prepare(cv::Rect dst_roi);
 
+        void feed(cv::cuda::GpuMat& img, cv::cuda::GpuMat& mask, const cv::Point& tl, cv::cuda::Stream& streamObj = cv::cuda::Stream::Null());
 
-        void feed(cv::cuda::GpuMat& img, cv::cuda::GpuMat& mask, const cv::Point& tl, cv::cuda::Stream& streamObj);
+        void feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, const cv::Point& tl, const int idx, cv::cuda::Stream& streamObj = cv::cuda::Stream::Null());
 
-
-        void blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj);
+        void blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj = cv::cuda::Stream::Null());
 
 private:
         void createWeightMap(const cv::cuda::GpuMat& mask, cv::cuda::GpuMat& weight_map, cv::cuda::Stream& streamObj = cv::cuda::Stream::Null());
@@ -75,7 +75,6 @@ public:
         cv::cuda::GpuMat dst_weight_map_;
         cv::Rect dst_roi_;
         std::vector<cv::cuda::GpuMat> weight_maps_;
-        int numBlocks_;
         int idx_weight_map_;
         float sharpness_;
         bool use_cache_weight_ = false;

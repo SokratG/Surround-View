@@ -27,7 +27,7 @@
 
 using namespace std::literals::chrono_literals;
 
-
+#define CUT_OFF_FRAME
 class SurroundView
 {
 private:
@@ -43,16 +43,21 @@ private:
 	std::vector<cv::Point> corners;
 	std::vector<cv::Size> sizes;
 	cv::Ptr<cv::detail::ExposureCompensator> compens;
+        cv::Rect blendingRect;
         /* optional */
         std::vector<cv::cuda::GpuMat> gpu_gain_map;
         std::vector<cv::cuda::GpuMat> texXmap; // texture remap x-coord
         std::vector<cv::cuda::GpuMat> texYmap; // texture remap y-coord
-	//
+        // --------------
 	cv::cuda::Stream streamObj;
         cv::Size mask_maxnorm_size, mask_minnorm_size;
         std::shared_ptr<CUDAFeatherBlender> cuBlender;
 #ifdef COLOR_CORRECTION
         std::vector<cv::cuda::GpuMat> inrgb = std::move(std::vector<cv::cuda::GpuMat>(3));
+#endif
+#ifdef CUT_OFF_FRAME
+private:
+        bool prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs);
 #endif
 protected:
         bool warpImage(const std::vector<cv::Mat>& imgs);

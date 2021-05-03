@@ -226,16 +226,18 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           cv::Mat res_col;
           auto x_ = 0;
           if (_cnts.size() % 2){
-              auto x_ = _cnts[_cnts.size() / 2].x;
+              x_ = _cnts[_cnts.size() / 2].x;
               res_col = thresh.col(x_);
-              middle_bot.x = x_;
-              middle_top.x = x_;
           }
           else{
-              auto x_ = _cnts[_cnts.size() / 2 + 1].x;
+              x_ = _cnts[_cnts.size() / 2 + 1].x;
               res_col = thresh.col(x_);
           }
-
+          middle_bot.x = x_;
+          middle_top.x = x_;
+          
+          
+          
 
 
           cv::drawContours(result, cnts, -1, cv::Scalar(0, 0, 255), 2);

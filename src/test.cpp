@@ -51,7 +51,7 @@ int CameraCycle()
         //cv::VideoWriter invid("stream.avi", cv::VideoWriter::fourcc('D', 'I', 'V', 'X'), 20, cameraSize);
 	
 	cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
-	//cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
+	cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 
 
 	SurroundView sv;
@@ -79,8 +79,8 @@ int CameraCycle()
 		    std::vector<cv::cuda::GpuMat*> datas {&frames[1].gpuFrame, &frames[2].gpuFrame};
 		    cv::cuda::GpuMat res;
 
-		    sv.stitch(datas, res);
-		    cv::imshow(win1, res);
+		    //sv.stitch(datas, res);
+		    //cv::imshow(win1, res);
 
 		}
 #endif

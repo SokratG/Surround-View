@@ -16,9 +16,6 @@ extern "C" {
 	void weightBlendCUDA_Async(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
 	    cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, const cv::Size& img_size, int dx, int dy,
 				   cudaStream_t stream_dst, cudaStream_t stream_dst_weight);
-	void weightBlendCUDAnum_Async(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
-	    cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, const cv::Size& img_size,
-	    int dx, int dy, int numBlocks, cudaStream_t stream_dst, cudaStream_t stream_dst_weight);
 	void normalizeUsingWeightMapGpu32F_Async(const cv::cuda::PtrStepf weight, cv::cuda::PtrStep<short> src,
 						      const int width, const int height, cudaStream_t stream_dst);
 }
@@ -102,18 +99,13 @@ void CUDABlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::c
 // ------------------------------- CUDAFeatherBlender --------------------------------
 
 CUDAFeatherBlender::CUDAFeatherBlender(const float sharpness) :
-      sharpness_(sharpness), numBlocks_(0), idx_weight_map_(0)
+      sharpness_(sharpness), use_cache_weight_(false)
 {
 
     if (cudaStreamCreate(&_cudaStreamDst) != cudaError::cudaSuccess)
             _cudaStreamDst = NULL;
     if (cudaStreamCreate(&_cudaStreamDst_weight) != cudaError::cudaSuccess)
             _cudaStreamDst_weight = NULL;
-
-    cudaDeviceProp cuProp;
-    cudaGetDeviceProperties(&cuProp, 0);
-    constexpr auto shift_block_size = 6;
-    numBlocks_ = cuProp.maxThreadsPerBlock >> shift_block_size;
 }
 
 CUDAFeatherBlender::~CUDAFeatherBlender()
@@ -156,7 +148,6 @@ void CUDAFeatherBlender::createWeightMap(const cv::cuda::GpuMat& mask, cv::cuda:
 
 }
 
-#define NUM_THREADS_BLEND_ASYNC
 void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, const cv::Point& tl, cv::cuda::Stream& streamObj)
 {
 
@@ -166,20 +157,33 @@ void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, c
 	int dy = tl.y - dst_roi_.y;
 
 	std::unique_ptr<cv::cuda::GpuMat> weight_map_ = std::make_unique<cv::cuda::GpuMat>();
+	createWeightMap(_mask, *weight_map_, streamObj);
+
+	if (_cudaStreamDst && _cudaStreamDst_weight)
+	    weightBlendCUDA_Async(_img, *weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy, _cudaStreamDst, _cudaStreamDst_weight);
+	else
+	    weightBlendCUDA(_img, *weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy);
+
+}
+
+void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, const cv::Point& tl, const int idx, cv::cuda::Stream& streamObj)
+{
+
+	CV_Assert(_img.type() == CV_16SC3);
+	CV_Assert(_mask.type() == CV_8U);
+	CV_Assert(idx >= 0);
+	int dx = tl.x - dst_roi_.x;
+	int dy = tl.y - dst_roi_.y;
+
+	std::unique_ptr<cv::cuda::GpuMat> weight_map_ = std::make_unique<cv::cuda::GpuMat>();
 	if (!use_cache_weight_)
 	    createWeightMap(_mask, *weight_map_, streamObj);
 	else{
-	    weight_map_ = std::make_unique<cv::cuda::GpuMat>(weight_maps_[idx_weight_map_]);
-	    use_cache_weight_ += 1;
+	    weight_map_ = std::make_unique<cv::cuda::GpuMat>(weight_maps_[idx]);
 	}
 
-	if (_cudaStreamDst && _cudaStreamDst_weight){
-#ifdef NUM_THREADS_BLEND_ASYNC
-	    weightBlendCUDAnum_Async(_img, *weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy, numBlocks_, _cudaStreamDst, _cudaStreamDst_weight);
-#else
+	if (_cudaStreamDst && _cudaStreamDst_weight)
 	    weightBlendCUDA_Async(_img, *weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy, _cudaStreamDst, _cudaStreamDst_weight);
-#endif
-	}
 	else
 	    weightBlendCUDA(_img, *weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy);
 
@@ -207,7 +211,6 @@ void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, c
      dst_.setTo(cv::Scalar::all(0));
      dst_mask_.setTo(cv::Scalar::all(0));
      dst_weight_map_.setTo(cv::Scalar::all(0));
-     use_cache_weight_ = 0;
  }
 
 
