@@ -482,6 +482,32 @@ bool InternalCameraParams::read(const std::string& filepath, const int num, cons
 // ------------------------SECTION--------------------------
 // -----------SyncedCameraSource Implementation-------------
 
+
+static cv::Point detectCornerCam(const cv::Size& src_size, const cv::Mat& xmap, const cv::Mat& ymap)
+{
+    auto tl_uf = std::numeric_limits<float>::max();
+    auto tl_vf = std::numeric_limits<float>::max();
+    auto br_uf = std::numeric_limits<float>::min();
+    auto br_vf = std::numeric_limits<float>::min();
+
+    for(auto y = 0; y < src_size.height; ++y){
+        const auto* ptr_x = xmap.ptr<float>(y);
+        const auto* ptr_y = ymap.ptr<float>(y);
+        for(auto x = 0; x < src_size.width; ++x){
+            tl_uf = (std::min)(tl_uf, ptr_x[x]);
+            tl_vf = (std::min)(tl_vf, ptr_y[x]);
+            br_uf = (std::max)(br_uf, ptr_x[x]);
+            br_vf = (std::max)(br_vf, ptr_y[x]);
+        }
+
+    }
+    return cv::Point(static_cast<int>(tl_uf), static_cast<int>(tl_vf));
+}
+
+
+
+
+
 int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& undistSize, const bool useUndist)
 {
 	bool camsOpenOk = true;
@@ -631,7 +657,7 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 
 		if (_undistort){
 			cv::cuda::remap(uData.remapedFrame, frames[i].gpuFrame, uData.remapX, uData.remapY,
-					cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), cudaStreamObj[i]);
+					cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), cudaStreamObj[i]);	
 			frames[i].gpuFrame = frames[i].gpuFrame(uData.roiFrame);
 		}	
 	}

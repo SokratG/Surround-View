@@ -134,7 +134,7 @@ public:
                     _cudaStream = NULL;
                 }
 	}
-
+public:
 	const CameraInfo& getCamera(int index) const { return _cams[index]; }
 	size_t getCamerasCount() const { return _cams.size(); }
 	cv::Size getFramesize() const { return frameSize; }

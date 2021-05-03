@@ -31,19 +31,23 @@ using namespace std::literals::chrono_literals;
 class SurroundView
 {
 private:
+        static constexpr auto threshold_color = 127;
+private:
 	bool isInit = false;
 	size_t imgs_num = 0;
 	double warped_image_scale = 1.0;
 	double work_scale = 1;
         double sharpness = 2.5f;
 	bool work_set = false;
+
 	std::vector<cv::Mat> Ks_f;
 	std::vector<cv::detail::CameraParams> cameras;
 	std::vector<cv::cuda::GpuMat> gpu_seam_masks;
 	std::vector<cv::Point> corners;
 	std::vector<cv::Size> sizes;
 	cv::Ptr<cv::detail::ExposureCompensator> compens;
-        cv::Rect blendingRect;
+        cv::Range blendingEdges;
+        cv::Size resSize;
         /* optional */
         std::vector<cv::cuda::GpuMat> gpu_gain_map;
         std::vector<cv::cuda::GpuMat> texXmap; // texture remap x-coord
@@ -69,6 +73,7 @@ public:
         void setMinNormSizeMask(cv::Size& size){mask_minnorm_size = size;}
         cv::Size getMinNormSizeMask() const {return mask_minnorm_size;}
         bool getInit() const {return isInit;}
+        cv::Size getResSize() const {return resSize;}
 public:
         SurroundView() :
             cuBlender(nullptr), mask_maxnorm_size(MAX_MASK_WIDTH, MAX_MASK_HEIGHT), mask_minnorm_size(MIN_MASK_WIDTH, MIN_MASK_HEIGHT)

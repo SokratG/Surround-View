@@ -92,18 +92,17 @@ bool SurroundView::warpImage(const std::vector<cv::Mat>& imgs)
 	}
 
 
-
-        cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::PlaneWarper>();
+        //cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::PlaneWarper>();
         //cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::SphericalWarper>();
-        //cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::CompressedRectilinearWarper>(2.f, 1.f);
+        cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::CompressedRectilinearWarper>(2.f, 1.f);
 
         cv::Ptr<cv::detail::RotationWarper> warper = warper_creator->create(static_cast<float>(warped_image_scale * work_scale));
 
 
         for(size_t i = 0; i < imgs_num; ++i){
-              corners[i] = warper->warp(imgs[i], Ks_f[i], cameras[i].R, cv::INTER_LINEAR, cv::BORDER_CONSTANT, imgs_warped[i]);
+              corners[i] = warper->warp(imgs[i], Ks_f[i], cameras[i].R, cv::INTER_LINEAR, cv::BORDER_REFLECT, imgs_warped[i]);
               sizes[i] = imgs_warped[i].size();
-              warper->warp(masks[i], Ks_f[i], cameras[i].R, cv::INTER_NEAREST, cv::BORDER_REFLECT, masks_warped_[i]);
+              warper->warp(masks[i], Ks_f[i], cameras[i].R, cv::INTER_NEAREST, cv::BORDER_CONSTANT, masks_warped_[i]);
               gpu_warpmasks[i].upload(masks_warped_[i]);
         }
 
@@ -146,11 +145,6 @@ bool SurroundView::warpImage(const std::vector<cv::Mat>& imgs)
 	}
 
 
-	if (!prepareGainMatrices(imgs_warped)){
-	    std::cerr << "Error: fail build gain compensator matrices...\n";
-	    return false;
-	}
-
 	return true;
 }
 
@@ -166,7 +160,6 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           for(size_t i = 0; i < imgs_num; ++i){
                   warp_.upload(cpu_imgs[i]);
                   cv::cuda::remap(warp_, warp_img, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
-                  //applyGpuCompensator(warp_img, gpu_gain_map[i]);
                   warp_img.convertTo(warp_s, CV_16S);
                   blender.feed(warp_s, gpu_seam_masks[i], corners[i]);
           }
@@ -177,126 +170,39 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 
           cv::Mat thresh;
           cv::cvtColor(result, thresh, cv::COLOR_RGB2GRAY);
-          cv::threshold(thresh, thresh, 32, 255, cv::THRESH_BINARY);
+          cv::threshold(thresh, thresh, 64, 255, cv::THRESH_BINARY);
           cv::Canny(thresh, thresh, 1, 255);
 
           cv::morphologyEx(thresh, thresh, cv::MORPH_DILATE, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)));
-          cv::morphologyEx(thresh, thresh, cv::MORPH_CLOSE, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)));
+          cv::morphologyEx(thresh, thresh, cv::MORPH_CLOSE, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5)));
 
-          std::vector<std::vector<cv::Point>> cnts;
-          cv::findContours(thresh, cnts, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+          /* scan line detect edges in the middle */
+          auto middle_x = (result.cols % 2 == 0) ? (result.cols / 2) : (result.cols / 2 + 1);
+          const cv::Mat col = result.col(middle_x);
+          auto y_top = 0, y_bot = result.rows;
 
-          if (cnts.empty()){
-                    std::cerr << "Error find contours for build rect panorama...\n:";
-                    return false;
+          for (;y_top <= result.rows || y_bot >= 0;){
+               auto val_top = col.at<uchar>(y_top);
+               auto val_bot = col.at<uchar>(y_bot);
+               if (val_top < threshold_color){
+                  y_top += 1;
+               }
+               if (val_bot < threshold_color){
+                   y_bot -= 1;
+               }
+               if (val_bot >= threshold_color && val_top >= threshold_color)
+                 break;
           }
 
-
-          std::vector<cv::Point> _cnts;
-          auto size_cnt = 1;
-          auto total_idx = 0, pidx = 0;
-          for(auto& pcnts : cnts){
-              if (pcnts.size() > size_cnt){
-                  size_cnt = pcnts.size();
-                  pidx = total_idx;
-              }
-              total_idx += 1;
-          }
-
-
-          _cnts = cnts[pidx];
-          if (size_cnt <= 1){
-                    std::cerr << "Error find good contours...\n:";
-                    return false;
-          }
-
-
-          std::sort(_cnts.begin(), _cnts.end(),
-                    [](const cv::Point& l, const cv::Point& r){
-                     if (l.x < r.x)
-                         return true;
-                     else if(l.x == r.x){
-                         if (l.y < r.y)
-                           return true;
-                     }
-                     return false;
-          });
-
-          cv::Point middle_bot, middle_top;
-          cv::Mat res_col;
-          auto x_ = 0;
-          if (_cnts.size() % 2){
-              auto x_ = _cnts[_cnts.size() / 2].x;
-              res_col = thresh.col(x_);
-              middle_bot.x = x_;
-              middle_top.x = x_;
-          }
-          else{
-              auto x_ = _cnts[_cnts.size() / 2 + 1].x;
-              res_col = thresh.col(x_);
-          }
-
-
-
-          cv::drawContours(result, cnts, -1, cv::Scalar(0, 0, 255), 2);
-          cv::circle(result, middle_bot, 10, cv::Scalar(255, 255, 255), -1);
-          cv::circle(result, middle_top, 10, cv::Scalar(255, 255, 255), -1);
-          cv::imshow("Camera - 2:", result);
-
-          return false;
-
+          CV_Assert(y_top >= 0 && y_bot <= result.rows);
 
           //constexpr auto tb_remove = 0.01;
-          cv::Rect boundRect = cv::Rect(0, 0, result.cols-1, result.rows-1);
-          //auto rem_offset = boundRect.height * tb_remove;
-
-          //blendingRect = cv::Rect(boundRect.x, boundRect.y + rem_offset, boundRect.width, boundRect.height - rem_offset);
-
-
-          //result = result(cv::Range(tl.x, result.rows - 1), cv::Range(tl.y, result.rows - 1));
-
+          resSize = result.size();
+          blendingEdges = cv::Range(y_top, y_bot);
 
           return true;
 }
 #endif
-
-bool SurroundView::prepareGainMatrices(const std::vector<cv::UMat>& warp_imgs)
-{
-	std::vector<cv::Mat> gain_map;
-
-	compens->getMatGains(gain_map);
-
-	if (gain_map.size() == 0){
-		std::cerr << "Error: no gain matrices for exposure compensator...\n";
-		return false;
-	}
-	if (gain_map.size() != imgs_num){
-		std::cerr << "Error: wrong size gain matrices for exposure compensator...\n";
-		return false;
-	}
-
-	gpu_gain_map = std::move(std::vector<cv::cuda::GpuMat>(imgs_num));
-
-	for (size_t i = 0; i < imgs_num; ++i){
-	      cv::resize(gain_map[i], gain_map[i], warp_imgs[i].size(), 0., 0., cv::INTER_LINEAR);
-
-	      if (gain_map[i].channels() != 3){
-		    std::vector<cv::Mat> gains_channels;
-		    gains_channels.push_back(gain_map[i]);
-		    gains_channels.push_back(gain_map[i]);
-		    gains_channels.push_back(gain_map[i]);
-		    cv::merge(gains_channels, gain_map[i]);
-	      }
-	      gpu_gain_map[i].upload(gain_map[i]);
-	}
-
-
-	gain_map.clear();
-
-	return true;
-}
-
-
 
 
 
@@ -309,7 +215,7 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::
     }
 
     cv::cuda::GpuMat gpuimg_warped_s, gpuimg_warped;
-    cv::cuda::GpuMat stitch, mask_;
+    cv::cuda::GpuMat stitch, mask_, temp;
 
     #pragma omp parallel for default(none) shared(imgs) private(gpuimg_warped, gpuimg_warped_s)
     for(size_t i = 0; i < imgs_num; ++i){
@@ -339,31 +245,12 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::
     cv::cuda::cvtColor(gpuimg_warped, blend_img, cv::COLOR_YCrCb2RGB, 0, streamObj);
 
 #else
-    //cv::cuda::GpuMat temp;
+    //temp = stitch(cv::Range(blendingEdges.start, blendingEdges.end), cv::Range(0, stitch.cols));
     stitch.convertTo(blend_img, CV_8U, streamObj);
-   // blend_img = temp(blendingRect);
+
 #endif
     return true;
 }
-
-
-
-
-
-void SurroundView::applyGpuCompensator(cv::cuda::GpuMat& _image, cv::cuda::GpuMat& gpu_gain_map)
-{
-	CV_Assert(_image.type() == CV_8UC3);
-
-	cv::cuda::GpuMat temp;
-
-	_image.convertTo(temp, CV_32F, streamObj);
-
-	cv::cuda::multiply(temp, gpu_gain_map, temp, 1, CV_32F, streamObj);
-
-	temp.convertTo(_image, CV_8U, streamObj);
-}
-
-
 
 
 

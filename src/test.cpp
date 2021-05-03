@@ -37,12 +37,12 @@ int CameraCycle()
 	}	
 	
 	source.startStream();
-	
 	std::shared_ptr<View> view_scene = std::make_shared<View>();
 	DisplayView dp;
 	//dp.init(1280, 720, view_scene);
 
 	std::array<SyncedCameraSource::Frame, 4> frames;
+
 	std::string win1{"Camera - 1:"};	
 	std::string win2{"Camera - 2:"};
 
@@ -51,7 +51,7 @@ int CameraCycle()
         //cv::VideoWriter invid("stream.avi", cv::VideoWriter::fourcc('D', 'I', 'V', 'X'), 20, cameraSize);
 	
 	cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
-	cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
+	//cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 
 
 	SurroundView sv;
@@ -73,14 +73,14 @@ int CameraCycle()
 #ifndef YES
 		if (!sv.getInit()){
 			std::vector<cv::cuda::GpuMat> datas {frames[1].gpuFrame, frames[2].gpuFrame};
-			sv.init(datas);
+			auto init = sv.init(datas);
 		}
 		else{
 		    std::vector<cv::cuda::GpuMat*> datas {&frames[1].gpuFrame, &frames[2].gpuFrame};
 		    cv::cuda::GpuMat res;
 
-		    //sv.stitch(datas, res);
-		    //cv::imshow(win1, res);
+		    sv.stitch(datas, res);
+		    cv::imshow(win1, res);
 
 		}
 #endif
