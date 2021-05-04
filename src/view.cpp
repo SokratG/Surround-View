@@ -6,9 +6,16 @@
 
 static void renderQuad();
 
+constexpr auto bolw_size = 3.f * 3.14159265359f / 2.f;
 
-void View::render(const Camera& cam, cv::cuda::GpuMat& frame)
+void View::render(const Camera& cam, const cv::cuda::GpuMat& frame)
 {
+    // render command
+    // ...
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
     glm::mat4 model(1.f);
     auto view = cam.getView();
     auto projection = glm::perspective(glm::radians(cam.getCamZoom()), aspect_ratio, 0.1f, 100.f);
@@ -60,7 +67,7 @@ bool View::init(const int32 width, const int32 height)
     std::vector<uint> idxs;
     //bool isgen = bowl.generate_mesh_uv(40.f, data, idxs);
     //bool isgen = bowl.generate_mesh_uv_part(3.14159265359f, 40.f, data, idxs);
-    bool isgen = bowl.generate_mesh_uv_hole_part(3.14159265359f, 40.f, hole_radius, data, idxs);
+    bool isgen = bowl.generate_mesh_uv_hole_part(bolw_size, 40.f, hole_radius, data, idxs);
 
     if (!isgen)
         return false;

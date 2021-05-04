@@ -38,8 +38,8 @@ int CameraCycle()
 	
 	source.startStream();
 	std::shared_ptr<View> view_scene = std::make_shared<View>();
-	DisplayView dp;
-	//dp.init(1280, 720, view_scene);
+	std::shared_ptr<DisplayView> dp = std::make_shared<DisplayView>();
+
 
 	std::array<SyncedCameraSource::Frame, 4> frames;
 
@@ -47,7 +47,6 @@ int CameraCycle()
 	std::string win2{"Camera - 2:"};
 
 
-	
         //cv::VideoWriter invid("stream.avi", cv::VideoWriter::fourcc('D', 'I', 'V', 'X'), 20, cameraSize);
 	
 	cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
@@ -65,31 +64,35 @@ int CameraCycle()
 			continue;
 		}	
 //#define YES
+//#define GL_YES
 #ifdef YES
 		cv::imshow(win1, frames[1].gpuFrame);
 		cv::imshow(win2, frames[2].gpuFrame);
 		//cv::imshow(win2, frames[0].gpuFrame);
-#endif
-#ifndef YES
+#else
 		if (!sv.getInit()){
-			std::vector<cv::cuda::GpuMat> datas {frames[1].gpuFrame, frames[2].gpuFrame};
+			std::vector<cv::cuda::GpuMat> datas {frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame};
 			auto init = sv.init(datas);
+#ifdef GL_YES
+			if (init){
+			    const auto tex_size = sv.getResSize();
+			    dp->init(tex_size.width, tex_size.height, view_scene);
+			}
+#endif
 		}
 		else{
-		    std::vector<cv::cuda::GpuMat*> datas {&frames[1].gpuFrame, &frames[2].gpuFrame};
+		    std::vector<cv::cuda::GpuMat*> datas {&frames[0].gpuFrame, &frames[1].gpuFrame, &frames[2].gpuFrame};
 		    cv::cuda::GpuMat res;
 
 		    sv.stitch(datas, res);
 		    cv::imshow(win1, res);
-
+#ifdef GL_YES
+		    bool okRender = dp->render(res);
+		    if (!okRender)
+		      break;
+#endif
 		}
 #endif
-
-/*
-		bool okRender = dp.render(frames);
-		if (!okRender)
-		  break;
-*/
 
 
 		if (cv::waitKey(1) > 0)

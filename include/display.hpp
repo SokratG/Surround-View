@@ -124,20 +124,16 @@ public:
             return isInit;
         }
 
-        bool render(std::array<SyncedCameraSource::Frame, 4>& frames)
+        bool render(const cv::cuda::GpuMat& frame)
         {
 
             if (!glfwWindowShouldClose(window) && isInit) {
                 // input
                 processInput(window);
 
-                // render command
-                // ...
-                glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
                 if (disp_view->getInit()){
-                    disp_view->render(cam, frames[1].gpuFrame);
+                    disp_view->render(cam, frame);
                 }
 
                 // check and call events and swap the buffers

@@ -11,13 +11,11 @@ bool AutoCalib::init(const std::vector<cv::Mat>& imgs)
 {
 	if (isInit){
 		std::cerr << "Autocalibrator already initialize...\n";
-		return false;
+		return isInit;
 	}
 
 	if (imgs.size() > imgs_num)
 		return false;
-
-	cv::Size img_size = imgs[0].size();
 
 
 	std::vector<cv::detail::ImageFeatures> features(imgs_num);
@@ -29,7 +27,6 @@ bool AutoCalib::init(const std::vector<cv::Mat>& imgs)
 	}
 
 	std::vector<int> indxs = cv::detail::leaveBiggestComponent(features, pairwise_matches, conf_thresh);
-
 
 	if (pairwise_matches.size() < (imgs_num*imgs_num)){
 		std::cout << pairwise_matches.size() << "\n";

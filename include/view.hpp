@@ -67,7 +67,7 @@ public:
 	
 
         bool init(const int32 width, const int32 height);
-        void render(const Camera& cam, cv::cuda::GpuMat& frame);
+        void render(const Camera& cam, const cv::cuda::GpuMat& frame);
 };
 
 
