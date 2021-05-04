@@ -9,6 +9,8 @@
 
 #include <iostream>
 
+
+
 bool SeamDetector::init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::detail::CameraParams>& cameras)
 {
         if (isInit){
@@ -52,9 +54,10 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
     }
 
 
-    //cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::PlaneWarper>();
-    //cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::SphericalWarper>();
-    cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::CompressedRectilinearWarper>(2.f, 1.f);
+    cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::SphericalWarper>();
+    //cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::CylindricalWarper>();
+
+
 
     cv::Ptr<cv::detail::RotationWarper> warper = warper_creator->create(static_cast<float>(warped_image_scale * work_scale));
 
@@ -65,9 +68,11 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
           gpu_warpmasks[i].upload(masks_warped_[i]);
     }
 
+
     for(const auto& msk : masks_warped_){
           if (msk.cols > mask_maxnorm_size.width || msk.rows > mask_maxnorm_size.height ||
               msk.cols < mask_minnorm_size.width || msk.rows < mask_minnorm_size.height) {
+                  std::cerr << msk.size() << "\n";
                   std::cerr << "Error: fail build masks for seam...\n";
                   return false;
           }
@@ -93,6 +98,7 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
 
     cv::cuda::GpuMat tempmask, gpu_dilate_mask, gpu_seam_mask;
     cv::Mat xmap, ymap;
+
     for(size_t i = 0; i < imgs_num; ++i){
             tempmask.upload(masks_warped_[i]);
             dilateFilter->apply(tempmask, gpu_dilate_mask);
@@ -102,9 +108,6 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
             texXmap[i].upload(xmap);
             texYmap[i].upload(ymap);
     }
-    masks_warped_.clear();
-    imgs_warped.clear();
-    imgs_warped_f.clear();
 
     return true;
 }

@@ -80,6 +80,7 @@ bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs){
 #ifdef CUT_OFF_FRAME
 bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 {
+
           cv::detail::MultiBandBlender blender(true, 5);
 
           blender.prepare(cv::detail::resultRoi(corners, sizes));
@@ -98,36 +99,35 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 
           cv::Mat thresh;
           cv::cvtColor(result, thresh, cv::COLOR_RGB2GRAY);
-          cv::threshold(thresh, thresh, 64, 255, cv::THRESH_BINARY);
+          cv::threshold(thresh, thresh, 32, 255, cv::THRESH_BINARY);
           cv::Canny(thresh, thresh, 1, 255);
 
           cv::morphologyEx(thresh, thresh, cv::MORPH_DILATE, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)));
           cv::morphologyEx(thresh, thresh, cv::MORPH_CLOSE, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5)));
 
-          /* scan line detect edges in the middle */
-          auto middle_x = (result.cols % 2 == 0) ? (result.cols / 2) : (result.cols / 2 + 1);
-          const cv::Mat col = result.col(middle_x);
-          auto y_top = 0, y_bot = result.rows;
 
-          for (;y_top <= result.rows || y_bot >= 0;){
-               auto val_top = col.at<uchar>(y_top);
-               auto val_bot = col.at<uchar>(y_bot);
-               if (val_top < threshold_color){
-                  y_top += 1;
-               }
-               if (val_bot < threshold_color){
-                   y_bot -= 1;
-               }
-               if (val_bot >= threshold_color && val_top >= threshold_color)
-                 break;
+
+          std::vector<std::vector<cv::Point>> cnts;
+          cv::findContours(thresh, cnts, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
+          cv::Point tl(std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
+          cv::Point br(std::numeric_limits<int>::min(), std::numeric_limits<int>::min());
+
+          for(const auto& pcnt : cnts){
+              for(const auto& pt : pcnt){
+                if (tl.x >= pt.x && tl.y > pt.y)
+                  tl = pt;
+                if (br.x < pt.x && br.y < pt.y)
+                  br = pt;
+              }
           }
 
-          CV_Assert(y_top >= 0 && y_bot <= result.rows);
 
           //constexpr auto tb_remove = 0.01;
           resSize = result.size();
-          blendingEdges = cv::Range(y_top, y_bot);
+          blendingEdges = cv::Range(tl.y, br.y);
+          cv::imshow("Camera - 1:", result);
 
+          return false;
           return true;
 }
 #endif
@@ -151,6 +151,7 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::
           cv::cuda::remap(*imgs[i], gpuimg_warped, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
 
           gpuimg_warped.convertTo(gpuimg_warped_s, CV_16S, streamObj);
+
 
           cuBlender->feed(gpuimg_warped_s, gpu_seam_masks[i], corners[i], i, streamObj);
 

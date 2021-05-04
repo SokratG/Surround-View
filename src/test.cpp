@@ -27,7 +27,8 @@ int CameraCycle()
 	cv::Size cameraSize(CAMERA_WIDTH, CAMERA_HEIGHT);
 	//cv::Size cameraSize(1280, 720);
 	cv::Size undistSize(640, 480);
-	
+	//cv::Size undistSize(1280, 720);
+
 	source.setFrameSize(cameraSize);
 
 	int code = source.init("calibrationData/video", undistSize, false);

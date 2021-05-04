@@ -14,7 +14,7 @@ private:
         size_t imgs_num = 0;
         double conf_thresh = 1.0;
         double match_conf = 0.6;
-        int maxpoints = 1200;
+        int maxpoints = 750;
         double work_scale = 1;
         double warped_image_scale = 1.;
         std::vector<cv::detail::CameraParams> cameras;
