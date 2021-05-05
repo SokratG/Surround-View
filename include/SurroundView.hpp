@@ -36,6 +36,7 @@ private:
         /* optional */
         std::vector<cv::cuda::GpuMat> texXmap; // texture remap x-coord
         std::vector<cv::cuda::GpuMat> texYmap; // texture remap y-coord
+        cv::Mat transformM;
         // --------------
 	cv::cuda::Stream streamObj;
         std::shared_ptr<CUDAFeatherBlender> cuBlender;

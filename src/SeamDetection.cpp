@@ -31,7 +31,6 @@ bool SeamDetector::init(const std::vector<cv::Mat>& imgs, const std::vector<cv::
 }
 
 
-
 bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::detail::CameraParams>& cameras)
 {
     gpu_seam_masks = std::move(std::vector<cv::cuda::GpuMat>(imgs_num));
@@ -42,6 +41,7 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
 
     /* warped images and masks */
     std::vector<cv::UMat> masks_warped_(imgs_num);
+
     std::vector<cv::UMat> imgs_warped(imgs_num);
     std::vector<cv::UMat> imgs_warped_f(imgs_num);
     std::vector<cv::Mat> masks(imgs_num);
@@ -57,8 +57,6 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
     cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::SphericalWarper>();
     //cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::CylindricalWarper>();
 
-
-
     cv::Ptr<cv::detail::RotationWarper> warper = warper_creator->create(static_cast<float>(warped_image_scale * work_scale));
 
     for(size_t i = 0; i < imgs_num; ++i){
@@ -67,7 +65,6 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
           warper->warp(masks[i], Ks_f[i], cameras[i].R, cv::INTER_NEAREST, cv::BORDER_CONSTANT, masks_warped_[i]);
           gpu_warpmasks[i].upload(masks_warped_[i]);
     }
-
 
     for(const auto& msk : masks_warped_){
           if (msk.cols > mask_maxnorm_size.width || msk.rows > mask_maxnorm_size.height ||

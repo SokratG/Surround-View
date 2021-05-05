@@ -105,29 +105,40 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           cv::morphologyEx(thresh, thresh, cv::MORPH_DILATE, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)));
           cv::morphologyEx(thresh, thresh, cv::MORPH_CLOSE, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5)));
 
-
-
           std::vector<std::vector<cv::Point>> cnts;
           cv::findContours(thresh, cnts, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
           cv::Point tl(std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
+          cv::Point tr(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+          cv::Point bl(std::numeric_limits<int>::max(), std::numeric_limits<int>::min());
           cv::Point br(std::numeric_limits<int>::min(), std::numeric_limits<int>::min());
 
+          auto width_ = result.cols;
+          auto height_ = result.rows;
+          const auto x_constrain = 0.02 * width_;
+          const auto y_constrain = height_ - (height_ / 4);
           for(const auto& pcnt : cnts){
               for(const auto& pt : pcnt){
-                if (tl.x >= pt.x && tl.y > pt.y)
+                if (pt.x <= x_constrain && tl.x >= pt.x && tl.y > pt.y)
                   tl = pt;
-                if (br.x < pt.x && br.y < pt.y)
+                if (pt.x >= (width_ - x_constrain) && tr.x <= pt.x && tr.y > pt.y)
+                  tr = pt;
+                if (pt.x <= x_constrain && bl.x >= pt.x && bl.y < pt.y)
+                  bl = pt;
+                if (pt.y > y_constrain && pt.x >= (width_ - x_constrain) && br.x <= pt.x && br.y < pt.y)
                   br = pt;
-              }
-          }
 
+              }
+
+          }
 
           //constexpr auto tb_remove = 0.01;
           resSize = result.size();
           blendingEdges = cv::Range(tl.y, br.y);
-          cv::imshow("Camera - 1:", result);
 
-          return false;
+          std::vector<cv::Point_<float>> src {tl, tr, bl, br};
+          std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0), cv::Point(0, height_), cv::Point(width_, height_)};
+          transformM = cv::getPerspectiveTransform(src, dst);
+
           return true;
 }
 #endif
@@ -177,7 +188,8 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::
     /*
     stitch.convertTo(blend_img, CV_8U, streamObj);
     */
-    temp = stitch(cv::Range(blendingEdges.start, blendingEdges.end), cv::Range(0, stitch.cols));
+    cv::cuda::warpPerspective(stitch, temp, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
+    //temp = stitch(cv::Range(blendingEdges.start, blendingEdges.end), cv::Range(0, stitch.cols));
     temp.convertTo(blend_img, CV_8U, streamObj);
 #endif
     return true;
