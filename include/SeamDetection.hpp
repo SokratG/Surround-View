@@ -21,7 +21,7 @@ private:
     std::vector<cv::Size> sizes;
     cv::Size mask_maxnorm_size, mask_minnorm_size;
     double warped_image_scale = 1.0;
-    double work_scale = 1;
+    double work_scale = 1.0;
     size_t imgs_num = 0;
     bool isInit = false;
 protected:

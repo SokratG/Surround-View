@@ -64,7 +64,9 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
           sizes[i] = imgs_warped[i].size();
           warper->warp(masks[i], Ks_f[i], cameras[i].R, cv::INTER_NEAREST, cv::BORDER_CONSTANT, masks_warped_[i]);
           gpu_warpmasks[i].upload(masks_warped_[i]);
+          std::cerr << masks_warped_[i].size() << "\n";
     }
+
 
     for(const auto& msk : masks_warped_){
           if (msk.cols > mask_maxnorm_size.width || msk.rows > mask_maxnorm_size.height ||

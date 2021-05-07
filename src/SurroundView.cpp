@@ -97,6 +97,8 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           blender.blend(result, mask);
           result.convertTo(result, CV_8U);
 
+
+
           cv::Mat thresh;
           cv::cvtColor(result, thresh, cv::COLOR_RGB2GRAY);
           cv::threshold(thresh, thresh, 32, 255, cv::THRESH_BINARY);
@@ -114,30 +116,41 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 
           auto width_ = result.cols;
           auto height_ = result.rows;
-          const auto x_constrain = 0.02 * width_;
-          const auto y_constrain = height_ - (height_ / 4);
+          /* x and y constrain set manual */
+          const auto xt_constrain = 0.2 * width_;
+          const auto xb_constrain = 0.001 * width_;
+          const auto y_constrain = height_ - (height_ / 2);
           for(const auto& pcnt : cnts){
               for(const auto& pt : pcnt){
-                if (pt.x <= x_constrain && tl.x >= pt.x && tl.y > pt.y)
+                if (pt.x <= xt_constrain && tl.y >= pt.y)
                   tl = pt;
-                if (pt.x >= (width_ - x_constrain) && tr.x <= pt.x && tr.y > pt.y)
+                if (pt.x >= (width_ - xt_constrain) && tr.y > pt.y)
                   tr = pt;
-                if (pt.x <= x_constrain && bl.x >= pt.x && bl.y < pt.y)
+                if (pt.x <= xb_constrain && bl.x >= pt.x && bl.y < pt.y)
                   bl = pt;
-                if (pt.y > y_constrain && pt.x >= (width_ - x_constrain) && br.x <= pt.x && br.y < pt.y)
+                if (pt.x >= (width_ - xb_constrain) && br.y <= pt.y)
                   br = pt;
 
               }
-
           }
 
-          //constexpr auto tb_remove = 0.01;
+          cv::circle(result, tl, 10, cv::Scalar(0, 255, 255), -1);
+          cv::circle(result, tr, 10, cv::Scalar(0, 255, 0), -1);
+          cv::circle(result, bl, 10, cv::Scalar(0, 0, 255), -1);
+          cv::circle(result, br, 10, cv::Scalar(255, 0, 255), -1);
+          cv::imshow("Cam1", result);
+
+
           resSize = result.size();
           blendingEdges = cv::Range(tl.y, br.y);
 
           std::vector<cv::Point_<float>> src {tl, tr, bl, br};
           std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0), cv::Point(0, height_), cv::Point(width_, height_)};
           transformM = cv::getPerspectiveTransform(src, dst);
+
+          cv::warpPerspective(result, result, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT);
+          cv::imshow("Cam2", result);
+          return false;
 
           return true;
 }

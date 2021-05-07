@@ -1,7 +1,5 @@
 #include "AutoCalib.hpp"
-#include <opencv2/highgui.hpp>
 #include <opencv2/stitching/detail/motion_estimators.hpp>
-#include <opencv2/stitching/detail/warpers.hpp>
 
 
 #include <iostream>
@@ -34,7 +32,6 @@ bool AutoCalib::init(const std::vector<cv::Mat>& imgs)
 		return false;
 	}
 
-
 	if (!computeCameraParameters(features, pairwise_matches))
 		return false;
 
@@ -47,7 +44,8 @@ bool AutoCalib::init(const std::vector<cv::Mat>& imgs)
 
 bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs, std::vector<cv::detail::MatchesInfo>& pairwise_matches, std::vector<cv::detail::ImageFeatures>& features)
 {
-	cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 9, 27, 0, 3, cv::ORB::HARRIS_SCORE, 31, 20);
+	//cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 9, 27, 0, 3, cv::ORB::HARRIS_SCORE, 27, 32); // 640x480
+	cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 9, 21, 0, 3, cv::ORB::HARRIS_SCORE, 21, 24); // 1280x720
 	cv::Ptr<cv::detail::FeaturesMatcher> matcher = cv::makePtr<cv::detail::BestOf2NearestMatcher>(true, match_conf);
 
 	for (int i = 0; i < imgs_num; ++i)
@@ -55,6 +53,13 @@ bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs
 
 
 	(*matcher)(features, pairwise_matches);
+
+
+	for(const auto& m : pairwise_matches){
+	  std::cerr << m.confidence << "\n";
+	}
+
+
 	matcher->collectGarbage();
 	return true;
 }
@@ -80,7 +85,7 @@ bool AutoCalib::computeCameraParameters(const std::vector<cv::detail::ImageFeatu
 #endif
 	}
 
-	cv::Ptr<cv::detail::BundleAdjusterBase> adjuster = cv::makePtr<cv::detail::BundleAdjusterRay>();
+	cv::Ptr<cv::detail::BundleAdjusterBase> adjuster = cv::makePtr<cv::detail::BundleAdjusterReproj>();
 
 	adjuster->setConfThresh(conf_thresh);
 
