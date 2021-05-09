@@ -2,7 +2,6 @@
 #include "AutoCalib.hpp"
 #include "SeamDetection.hpp"
 #include "SurroundView.hpp"
-#include <opencv2/highgui.hpp>
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudawarping.hpp>
@@ -12,6 +11,8 @@
 #include <opencv2/imgproc.hpp>
 
 #include <omp.h>
+
+static auto isstart = false;
 
 
 bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs){
@@ -35,18 +36,18 @@ bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs){
 
 
 	AutoCalib autcalib(imgs_num);
-	bool res = autcalib.init(cpu_imgs);
+	bool res = autcalib.init(cpu_imgs, true);
 	if (!res){
 	    std::cerr << "Error can't autocalibrate camera parameters...\n";
 	    return false;
 	}
 	warped_image_scale = autcalib.get_warpImgScale();
-	cameras = autcalib.getExtCameraParam();
+	R = autcalib.getExtRotation();
 	Ks_f = autcalib.getIntCameraParam();
 
 
 	SeamDetector smd(imgs_num, warped_image_scale);
-	res = smd.init(cpu_imgs, Ks_f, cameras);
+	res = smd.init(cpu_imgs, Ks_f, R);
 	if (!res){
 	    std::cerr << "Error can't seam masks for images...\n";
 	    return false;
@@ -76,8 +77,94 @@ bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs){
 }
 
 
+bool SurroundView::initFromFile(const std::string& dirpath, const std::vector<cv::cuda::GpuMat>& imgs)
+{
+    if (isInit){
+        std::cerr << "SurroundView already initialize...\n";
+        return false;
+    }
+
+    if (dirpath.empty()){
+        std::cerr << "Invalid directory path...\n";
+        return false;
+    }
+
+    imgs_num = imgs.size();
+
+    if (imgs_num <= 1){
+        std::cerr << "Not enough images in imgs vector, must be >= 2...\n";
+        return false;
+    }
+
+    std::vector<cv::Mat> cpu_imgs(imgs_num);
+    for (size_t i = 0; i < imgs_num; ++i){
+        imgs[i].download(cpu_imgs[i]);
+    }
+
+
+    bool res = false;
+    if (!isstart){ // delete after test
+        res = getDataFromFile(dirpath);
+        if (!res){
+            std::cerr << "Error can't read camera parameters...\n";
+            return false;
+        }
+
+        SeamDetector smd(imgs_num, warped_image_scale);
+        res = smd.init(cpu_imgs, Ks_f, R);
+        if (!res){
+            std::cerr << "Error can't seam masks for images...\n";
+            return false;
+        }
+        gpu_seam_masks = smd.getSeams();
+        corners = smd.getCorners();
+        sizes = smd.getSizes();
+        texXmap = smd.getXmap();
+        texYmap = smd.getYmap();
+        isstart = true;
+    }
 
 #ifdef CUT_OFF_FRAME
+    res = prepareCutOffFrame(cpu_imgs);
+    if (!res){
+        std::cerr << "Error can't prepare blending ROI rect...\n";
+        return false;
+    }
+#endif
+
+    cuBlender = std::make_shared<CUDAFeatherBlender>(sharpness);
+    cuBlender->prepare(corners, sizes, gpu_seam_masks);
+
+    isInit = true;
+
+
+    return isInit;
+}
+
+
+bool SurroundView::getDataFromFile(const std::string& dirpath)
+{
+    Ks_f = std::move(std::vector<cv::Mat>(imgs_num));
+    R = std::move(std::vector<cv::Mat>(imgs_num));
+    auto fullpath = dirpath + "Camparam";
+    for(auto i = 0; i < imgs_num; ++i){
+           std::string KRpath{fullpath + std::to_string(i) + ".txt"};
+           cv::FileStorage KRfout(KRpath, cv::FileStorage::READ);
+           warped_image_scale = KRfout["FocalLength"];
+           if (!KRfout.isOpened()){
+               std::cerr << "Error can't open camera param file: " << KRpath << "...\n";
+               return false;
+           }
+           cv::Mat_<float> K_;
+           KRfout["Intrisic"] >> K_;
+           K_.convertTo(Ks_f[i], CV_32F);
+           KRfout["Rotation"] >> R[i];
+    }
+    return true;
+}
+
+#ifdef CUT_OFF_FRAME
+#include <opencv2/highgui.hpp>
 bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 {
 
@@ -109,38 +196,34 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 
           std::vector<std::vector<cv::Point>> cnts;
           cv::findContours(thresh, cnts, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
-          cv::Point tl(std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
-          cv::Point tr(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
-          cv::Point bl(std::numeric_limits<int>::max(), std::numeric_limits<int>::min());
-          cv::Point br(std::numeric_limits<int>::min(), std::numeric_limits<int>::min());
+          cv::Point tl, tr, bl, br;
 
           auto width_ = result.cols;
           auto height_ = result.rows;
-          /* x and y constrain set manual */
-          const auto xt_constrain = 0.2 * width_;
-          const auto xb_constrain = 0.001 * width_;
-          const auto y_constrain = height_ - (height_ / 2);
+          /* constrain set manual */
+          const auto half_constrain = height_ / 2;
+          tl = cnts[0][0];
+          tr = cnts[0][0];
+          bl = cnts[0][0];
+          br = cnts[0][0];
           for(const auto& pcnt : cnts){
               for(const auto& pt : pcnt){
-                if (pt.x <= xt_constrain && tl.y >= pt.y)
+                if (tl.x > pt.x)
                   tl = pt;
-                if (pt.x >= (width_ - xt_constrain) && tr.y > pt.y)
+                if (pt.y < half_constrain && tr.x < pt.x && tr.y > pt.y)
                   tr = pt;
-                if (pt.x <= xb_constrain && bl.x >= pt.x && bl.y < pt.y)
+                if (pt.y >= half_constrain && bl.x >= pt.x && bl.y < pt.y)
                   bl = pt;
-                if (pt.x >= (width_ - xb_constrain) && br.y <= pt.y)
+                if (br.x < pt.x && br.y <= pt.y)
                   br = pt;
-
               }
           }
-
+/*
           cv::circle(result, tl, 10, cv::Scalar(0, 255, 255), -1);
           cv::circle(result, tr, 10, cv::Scalar(0, 255, 0), -1);
           cv::circle(result, bl, 10, cv::Scalar(0, 0, 255), -1);
           cv::circle(result, br, 10, cv::Scalar(255, 0, 255), -1);
-          cv::imshow("Cam1", result);
-
-
+*/
           resSize = result.size();
           blendingEdges = cv::Range(tl.y, br.y);
 
@@ -149,8 +232,8 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           transformM = cv::getPerspectiveTransform(src, dst);
 
           cv::warpPerspective(result, result, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT);
-          cv::imshow("Cam2", result);
-          return false;
+          //cv::imshow("Cam2", result);
+
 
           return true;
 }

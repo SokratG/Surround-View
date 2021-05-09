@@ -8,7 +8,7 @@
 #define MAX_MASK_WIDTH 1700
 #define MAX_MASK_HEIGHT 2000
 #define MIN_MASK_WIDTH 320
-#define MIN_MASK_HEIGHT 240
+#define MIN_MASK_HEIGHT 200
 
 
 class SeamDetector
@@ -25,7 +25,7 @@ private:
     size_t imgs_num = 0;
     bool isInit = false;
 protected:
-    bool warpedImage(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::detail::CameraParams>& cameras);
+    bool warpedImage(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R);
 public:
     bool getInit() const {return isInit;}
     std::vector<cv::Point> getCorners() const {return corners;}
@@ -42,5 +42,5 @@ public:
         imgs_num(num_imgs), warped_image_scale(warped_image_scale_),
         mask_maxnorm_size(MAX_MASK_WIDTH, MAX_MASK_HEIGHT), mask_minnorm_size(MIN_MASK_WIDTH, MIN_MASK_HEIGHT)
     {assert(num_imgs > 0);}
-    bool init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::detail::CameraParams>& cameras);
+    bool init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R);
 };

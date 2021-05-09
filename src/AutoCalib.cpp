@@ -5,7 +5,7 @@
 #include <iostream>
 
 
-bool AutoCalib::init(const std::vector<cv::Mat>& imgs)
+bool AutoCalib::init(const std::vector<cv::Mat>& imgs, const bool savedata)
 {
 	if (isInit){
 		std::cerr << "Autocalibrator already initialize...\n";
@@ -35,22 +35,25 @@ bool AutoCalib::init(const std::vector<cv::Mat>& imgs)
 	if (!computeCameraParameters(features, pairwise_matches))
 		return false;
 
+	if (savedata)
+	    saveData();
 
 	isInit = true;
 
 	return isInit;
 }
 
-
+#include <opencv2/highgui.hpp>
 bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs, std::vector<cv::detail::MatchesInfo>& pairwise_matches, std::vector<cv::detail::ImageFeatures>& features)
 {
-	//cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 9, 27, 0, 3, cv::ORB::HARRIS_SCORE, 27, 32); // 640x480
-	cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 9, 21, 0, 3, cv::ORB::HARRIS_SCORE, 21, 24); // 1280x720
+	cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 9, 18, 0, 3, cv::ORB::HARRIS_SCORE, 18, 21); // 640x480
+	//cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 9, 21, 0, 3, cv::ORB::HARRIS_SCORE, 21, 24); // 1280x720
 	cv::Ptr<cv::detail::FeaturesMatcher> matcher = cv::makePtr<cv::detail::BestOf2NearestMatcher>(true, match_conf);
 
-	for (int i = 0; i < imgs_num; ++i)
-		cv::detail::computeImageFeatures(finder, imgs[i], features[i]);
 
+	for (int i = 0; i < imgs_num; ++i){
+		cv::detail::computeImageFeatures(finder, imgs[i], features[i]);
+	}
 
 	(*matcher)(features, pairwise_matches);
 
@@ -60,7 +63,12 @@ bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs
 	}
 
 
-	matcher->collectGarbage();
+
+	cv::Mat temp1;
+	cv::drawMatches(imgs[2], features[2].keypoints, imgs[1], features[1].keypoints, pairwise_matches[7].matches, temp1);
+
+	cv::imshow("Cam1", temp1);
+
 	return true;
 }
 
@@ -68,6 +76,7 @@ bool AutoCalib::computeCameraParameters(const std::vector<cv::detail::ImageFeatu
 {
 
 	cv::detail::HomographyBasedEstimator est;
+	std::vector<cv::detail::CameraParams> cameras;
 
 	if (!est(features, pairwise_matches, cameras)){
 		std::cerr << "Error refinement camera params...\n";
@@ -107,6 +116,8 @@ bool AutoCalib::computeCameraParameters(const std::vector<cv::detail::ImageFeatu
 		cv::Mat_<float> K;
 		cameras[i].K().convertTo(K, CV_32F);
 		Ks_f.emplace_back(K);
+		R.emplace_back(cameras[i].R);
+		T.emplace_back(cameras[i].t);
 	}
 
 	std::sort(focals.begin(), focals.end());
@@ -118,4 +129,18 @@ bool AutoCalib::computeCameraParameters(const std::vector<cv::detail::ImageFeatu
 
 	return true;
 }
+
+void AutoCalib::saveData(const std::string& strpath) const
+{
+
+    for(auto i = 0; i < imgs_num; ++i){
+           std::string KRpath{"Camparam" + std::to_string(i) + ".txt"};
+           cv::FileStorage KRfout(KRpath, cv::FileStorage::WRITE);
+           KRfout << "FocalLength" << warped_image_scale;
+           KRfout << "Intrisic" << Ks_f[i];
+           KRfout << "Rotation" << R[i];
+    }
+}
+
+
 

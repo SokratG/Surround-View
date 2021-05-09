@@ -26,8 +26,8 @@ int CameraCycle()
 
 	cv::Size cameraSize(CAMERA_WIDTH, CAMERA_HEIGHT);
 	//cv::Size cameraSize(1280, 720);
-	//cv::Size undistSize(640, 480);
-	cv::Size undistSize(1280, 720);
+	cv::Size undistSize(640, 480);
+	//cv::Size undistSize(1280, 720);
 
 	source.setFrameSize(cameraSize);
 
@@ -51,7 +51,7 @@ int CameraCycle()
         //cv::VideoWriter invid("stream.avi", cv::VideoWriter::fourcc('D', 'I', 'V', 'X'), 20, cameraSize);
 	
 	cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
-	//cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
+	cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 
 
 	SurroundView sv;
@@ -72,8 +72,8 @@ int CameraCycle()
 		//cv::imshow(win2, frames[0].gpuFrame);
 #else
 		if (!sv.getInit()){
-			std::vector<cv::cuda::GpuMat> datas {frames[1].gpuFrame, frames[2].gpuFrame};
-			auto init = sv.init(datas);
+			std::vector<cv::cuda::GpuMat> datas {frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame};
+			auto init = sv.initFromFile("campar/", datas);
 #ifdef GL_YES
 			if (init){
 			    const auto tex_size = sv.getResSize();
@@ -82,11 +82,11 @@ int CameraCycle()
 #endif
 		}
 		else{
-		    std::vector<cv::cuda::GpuMat*> datas {&frames[1].gpuFrame, &frames[2].gpuFrame};
+		    std::vector<cv::cuda::GpuMat*> datas {&frames[0].gpuFrame, &frames[1].gpuFrame, &frames[2].gpuFrame};
 		    cv::cuda::GpuMat res;
 
 		    sv.stitch(datas, res);
-		    //cv::imshow(win1, res);
+		    cv::imshow(win1, res);
 #ifdef GL_YES
 		    bool okRender = dp->render(res);
 		    if (!okRender)

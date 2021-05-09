@@ -27,7 +27,7 @@ private:
 	double warped_image_scale = 1.0;
         double sharpness = 2.5f;
 	std::vector<cv::Mat> Ks_f;
-	std::vector<cv::detail::CameraParams> cameras;
+        std::vector<cv::Mat> R;
 	std::vector<cv::cuda::GpuMat> gpu_seam_masks;
 	std::vector<cv::Point> corners;
 	std::vector<cv::Size> sizes;
@@ -46,6 +46,7 @@ private:
 #ifdef CUT_OFF_FRAME
 private:
         bool prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs);
+        bool getDataFromFile(const std::string& dirpath);
 #endif
 public:
         bool getInit() const {return isInit;}
@@ -53,6 +54,7 @@ public:
 public:
         SurroundView() :cuBlender(nullptr) {}
         bool init(const std::vector<cv::cuda::GpuMat>& imgs);
+        bool initFromFile(const std::string& dirpath, const std::vector<cv::cuda::GpuMat>& imgs);
         bool stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::GpuMat& blend_img);
 };
 

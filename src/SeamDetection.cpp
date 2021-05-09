@@ -11,14 +11,14 @@
 
 
 
-bool SeamDetector::init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::detail::CameraParams>& cameras)
+bool SeamDetector::init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R)
 {
         if (isInit){
             std::cerr << "SeamDetector already initialize...\n";
             return isInit;
         }
 
-        bool res = warpedImage(imgs, Ks_f, cameras);
+        bool res = warpedImage(imgs, Ks_f, R);
         if (!res){
             return false;
         }
@@ -31,7 +31,7 @@ bool SeamDetector::init(const std::vector<cv::Mat>& imgs, const std::vector<cv::
 }
 
 
-bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::detail::CameraParams>& cameras)
+bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R)
 {
     gpu_seam_masks = std::move(std::vector<cv::cuda::GpuMat>(imgs_num));
     corners = std::move(std::vector<cv::Point>(imgs_num));
@@ -60,9 +60,9 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
     cv::Ptr<cv::detail::RotationWarper> warper = warper_creator->create(static_cast<float>(warped_image_scale * work_scale));
 
     for(size_t i = 0; i < imgs_num; ++i){
-          corners[i] = warper->warp(imgs[i], Ks_f[i], cameras[i].R, cv::INTER_LINEAR, cv::BORDER_REFLECT, imgs_warped[i]);
+          corners[i] = warper->warp(imgs[i], Ks_f[i], R[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, imgs_warped[i]);
           sizes[i] = imgs_warped[i].size();
-          warper->warp(masks[i], Ks_f[i], cameras[i].R, cv::INTER_NEAREST, cv::BORDER_CONSTANT, masks_warped_[i]);
+          warper->warp(masks[i], Ks_f[i], R[i], cv::INTER_NEAREST, cv::BORDER_CONSTANT, masks_warped_[i]);
           gpu_warpmasks[i].upload(masks_warped_[i]);
           std::cerr << masks_warped_[i].size() << "\n";
     }
@@ -103,7 +103,7 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
             dilateFilter->apply(tempmask, gpu_dilate_mask);
             cv::cuda::resize(gpu_dilate_mask, gpu_seam_mask, tempmask.size());
             cv::cuda::bitwise_and(gpu_seam_mask, gpu_warpmasks[i], gpu_seam_masks[i]);
-            warper->buildMaps(imgs[i].size(), Ks_f[i], cameras[i].R, xmap, ymap);
+            warper->buildMaps(imgs[i].size(), Ks_f[i], R[i], xmap, ymap);
             texXmap[i].upload(xmap);
             texYmap[i].upload(ymap);
     }
