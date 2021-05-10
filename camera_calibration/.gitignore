@@ -1,0 +1,12 @@
+*.user
+*.user.*
+*.autosave
+*.vs
+*.idea
+*.kdev4
+*.TMP
+
+!.gitignore
+
+build
+cmake-build-*
