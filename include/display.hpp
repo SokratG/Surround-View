@@ -78,11 +78,12 @@ public:
 	}
         ~DisplayView(){glfwTerminate();}
 
-        bool init(const int32 width, const int32 height, std::shared_ptr<View> scene_view){
+        bool init(const int32 wnd_width, const int32 wnd_height,
+                  const int32 tex_width, const int32 tex_height, std::shared_ptr<View> scene_view){
             if (isInit)
                     return isInit;
-            this->width = width;
-            this->height = height;
+            this->width = wnd_width;
+            this->height = wnd_height;
             disp_view = scene_view;
 
             /*
@@ -104,7 +105,7 @@ public:
             glfwMakeContextCurrent(window);
 
             if (!disp_view->getInit())
-                disp_view->init(width, height);
+                disp_view->init(tex_width, tex_height);
 
             glDisable(GL_DEPTH_TEST);
             //glDepthFunc(GL_LEQUAL);

@@ -31,7 +31,6 @@ private:
 	std::vector<cv::cuda::GpuMat> gpu_seam_masks;
 	std::vector<cv::Point> corners;
 	std::vector<cv::Size> sizes;
-        cv::Range blendingEdges;
         cv::Size resSize;
         /* optional */
         std::vector<cv::cuda::GpuMat> texXmap; // texture remap x-coord

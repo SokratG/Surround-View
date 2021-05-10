@@ -95,11 +95,9 @@ class SyncedCameraSource
 public:
 	typedef struct _Frame {
 		cv::cuda::GpuMat gpuFrame;
-		cv::cuda::GpuMat undistortGpuFrame;
 	} Frame;
 	typedef struct _CameraUndistortData{
 		cv::cuda::GpuMat remapX, remapY;
-		cv::cuda::GpuMat remapedFrame;
 		cv::Rect roiFrame;
 	} CameraUndistortData; 
 	std::array<cv::Mat, 4> Ks;

@@ -651,14 +651,13 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 	
 		gpuConvertUYVY2RGB_async((uchar*) dataBuffer.start, cudaBuffer, frameSize.width, frameSize.height,
 					  numBlocks, numThreads, _cudaStreams[i]);
-		auto& uData = undistFrames[i];
 
-		uData.remapedFrame = cv::cuda::GpuMat(frameSize, CV_8UC3, cudaBuffer);
+		const auto uData = cv::cuda::GpuMat(frameSize, CV_8UC3, cudaBuffer);
 
 		if (_undistort){
-			cv::cuda::remap(uData.remapedFrame, frames[i].gpuFrame, uData.remapX, uData.remapY,
+			cv::cuda::remap(uData, frames[i].gpuFrame, undistFrames[i].remapX, undistFrames[i].remapY,
 					cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), cudaStreamObj[i]);	
-			frames[i].gpuFrame = frames[i].gpuFrame(uData.roiFrame);
+			frames[i].gpuFrame = frames[i].gpuFrame(undistFrames[i].roiFrame);
 		}	
 	}
 

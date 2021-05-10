@@ -175,7 +175,7 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           cv::cuda::GpuMat warp_, warp_s, warp_img;
           for(size_t i = 0; i < imgs_num; ++i){
                   warp_.upload(cpu_imgs[i]);
-                  cv::cuda::remap(warp_, warp_img, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
+                  cv::cuda::remap(warp_, warp_img, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, cv::Scalar(), streamObj);
                   warp_img.convertTo(warp_s, CV_16S);
                   blender.feed(warp_s, gpu_seam_masks[i], corners[i]);
           }
@@ -183,8 +183,6 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           cv::Mat result, mask;
           blender.blend(result, mask);
           result.convertTo(result, CV_8U);
-
-
 
           cv::Mat thresh;
           cv::cvtColor(result, thresh, cv::COLOR_RGB2GRAY);
@@ -202,38 +200,42 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           auto height_ = result.rows;
           /* constrain set manual */
           const auto half_constrain = height_ / 2;
+          const auto xl_constrain = width_ * 0.04;
+          const auto xr_constrain = width_ * 0.01;
           tl = cnts[0][0];
-          tr = cnts[0][0];
-          bl = cnts[0][0];
-          br = cnts[0][0];
+          tr = cv::Point(width_, 0);
+          bl = cv::Point(0, 0);
+          br = cv::Point(0, 0);
+
           for(const auto& pcnt : cnts){
               for(const auto& pt : pcnt){
                 if (tl.x > pt.x)
                   tl = pt;
-                if (pt.y < half_constrain && tr.x < pt.x && tr.y > pt.y)
+                if (pt.y < half_constrain && tr.x < pt.x && tr.y >= pt.y)
                   tr = pt;
-                if (pt.y >= half_constrain && bl.x >= pt.x && bl.y < pt.y)
+                if (pt.x <= xl_constrain && bl.x <= pt.x && bl.y < pt.y)
                   bl = pt;
-                if (br.x < pt.x && br.y <= pt.y)
+                if (pt.x >= (width_ - xr_constrain) && br.y <= pt.y)
                   br = pt;
               }
           }
+          auto temp = cv::Point(width_ / 2 + 75, 50);
 /*
           cv::circle(result, tl, 10, cv::Scalar(0, 255, 255), -1);
           cv::circle(result, tr, 10, cv::Scalar(0, 255, 0), -1);
           cv::circle(result, bl, 10, cv::Scalar(0, 0, 255), -1);
           cv::circle(result, br, 10, cv::Scalar(255, 0, 255), -1);
+          cv::circle(result, temp, 10, cv::Scalar(255, 255, 255), -1);
+          cv::imshow("Cam0", result);
 */
-          resSize = result.size();
-          blendingEdges = cv::Range(tl.y, br.y);
 
-          std::vector<cv::Point_<float>> src {tl, tr, bl, br};
-          std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0), cv::Point(0, height_), cv::Point(width_, height_)};
+          //resSize = result.size();
+          const auto offset = (tr.x < br.x) ? width_ - tr.x : width_ - br.x;
+          resSize = cv::Size(width_ - offset, height_);
+
+          std::vector<cv::Point_<float>> src {tl, temp, bl, br};
+          std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(temp.x, 0), cv::Point(0, height_), cv::Point(width_, height_)};
           transformM = cv::getPerspectiveTransform(src, dst);
-
-          cv::warpPerspective(result, result, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT);
-          //cv::imshow("Cam2", result);
-
 
           return true;
 }
@@ -285,7 +287,6 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::
     stitch.convertTo(blend_img, CV_8U, streamObj);
     */
     cv::cuda::warpPerspective(stitch, temp, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
-    //temp = stitch(cv::Range(blendingEdges.start, blendingEdges.end), cv::Range(0, stitch.cols));
     temp.convertTo(blend_img, CV_8U, streamObj);
 #endif
     return true;

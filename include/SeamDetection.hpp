@@ -5,10 +5,10 @@
 #include <vector>
 #include <cmath>
 
-#define MAX_MASK_WIDTH 1700
-#define MAX_MASK_HEIGHT 2000
-#define MIN_MASK_WIDTH 320
-#define MIN_MASK_HEIGHT 200
+#define MAX_MASK_WIDTH 1600
+#define MAX_MASK_HEIGHT 1400
+#define MIN_MASK_WIDTH 250
+#define MIN_MASK_HEIGHT 140
 
 
 class SeamDetector

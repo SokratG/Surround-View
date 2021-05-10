@@ -17,6 +17,7 @@ void View::render(const Camera& cam, const cv::cuda::GpuMat& frame)
 
 
     glm::mat4 model(1.f);
+    //model = glm::scale(model, glm::vec3(2.f, 2.f, 2.f));
     auto view = cam.getView();
     auto projection = glm::perspective(glm::radians(cam.getCamZoom()), aspect_ratio, 0.1f, 100.f);
 
@@ -55,20 +56,17 @@ bool View::init(const int32 width, const int32 height)
     glGenBuffers(1, &bowlVBO);
     glGenBuffers(1, &bowlEBO);
 
-    auto inner_radius = 0.35f;
-    auto radius = 0.5f;
-    auto hole_radius = 0.1f;
-    auto a = 0.5f;
-    auto b = 0.5f;
-    auto c = 0.7f;
+    auto inner_radius = 0.3f;
+    auto radius = 0.4f;
+    auto a = 0.4f;
+    auto b = 0.4f;
+    auto c = 0.1f;
 
     Bowl bowl(inner_radius, radius, a, b, c);
     std::vector<float> data;
     std::vector<uint> idxs;
-    //bool isgen = bowl.generate_mesh_uv(40.f, data, idxs);
-    //bool isgen = bowl.generate_mesh_uv_part(3.14159265359f, 40.f, data, idxs);
-    bool isgen = bowl.generate_mesh_uv_hole_part(bolw_size, 40.f, hole_radius, data, idxs);
-
+    //bool isgen = bowl.generate_mesh_uv(80.f, data, idxs);
+    bool isgen = bowl.generate_mesh_uv_hole(60.f, 0.02f, data, idxs);
     if (!isgen)
         return false;
 
@@ -80,9 +78,9 @@ bool View::init(const int32 width, const int32 height)
 
     glBindVertexArray(bowlVAO);
     glBindBuffer(GL_ARRAY_BUFFER, bowlVBO);
-    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), &data[0], GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), &data[0], GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bowlEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexPartBowl * sizeof(uint), &idxs[0], GL_DYNAMIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexPartBowl * sizeof(uint), &idxs[0], GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
     glEnableVertexAttribArray(1);
