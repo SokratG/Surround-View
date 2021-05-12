@@ -41,7 +41,6 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
 
     /* warped images and masks */
     std::vector<cv::UMat> masks_warped_(imgs_num);
-
     std::vector<cv::UMat> imgs_warped(imgs_num);
     std::vector<cv::UMat> imgs_warped_f(imgs_num);
     std::vector<cv::Mat> masks(imgs_num);
@@ -54,8 +53,8 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
     }
 
 
-    cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::SphericalWarper>();
-    //cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::CylindricalWarper>();
+    //cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::SphericalWarper>();
+    cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::CylindricalWarper>();
 
     cv::Ptr<cv::detail::RotationWarper> warper = warper_creator->create(static_cast<float>(warped_image_scale * work_scale));
 
@@ -64,7 +63,6 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
           sizes[i] = imgs_warped[i].size();
           warper->warp(masks[i], Ks_f[i], R[i], cv::INTER_NEAREST, cv::BORDER_CONSTANT, masks_warped_[i]);
           gpu_warpmasks[i].upload(masks_warped_[i]);
-          std::cerr << masks_warped_[i].size() << "\n";
     }
 
 
@@ -83,16 +81,15 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
     for (int i = 0; i < imgs_num; ++i){
           compens->apply(i, corners[i], imgs_warped[i], masks_warped_[i]);
           imgs_warped[i].convertTo(imgs_warped_f[i], CV_32F);
+
     }
 
-
-    cv::Ptr<cv::detail::SeamFinder> seam_finder = cv::detail::SeamFinder::createDefault(cv::detail::SeamFinder::VORONOI_SEAM);
-
-
+    //cv::Ptr<cv::detail::SeamFinder> seam_finder = cv::detail::SeamFinder::createDefault(cv::detail::SeamFinder::VORONOI_SEAM);
+    cv::Ptr<cv::detail::SeamFinder> seam_finder = cv::detail::SeamFinder::createDefault(cv::detail::SeamFinder::DP_SEAM);
     seam_finder->find(imgs_warped_f, corners, masks_warped_);
 
 
-    cv::Mat morphel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+    cv::Mat morphel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
     cv::Ptr<cv::cuda::Filter> dilateFilter = cv::cuda::createMorphologyFilter(cv::MORPH_DILATE, masks_warped_[0].type(), morphel);
 
     cv::cuda::GpuMat tempmask, gpu_dilate_mask, gpu_seam_mask;
@@ -110,3 +107,9 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
 
     return true;
 }
+
+
+
+
+
+

@@ -185,63 +185,64 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           result.convertTo(result, CV_8U);
 
           cv::Mat thresh;
-          cv::cvtColor(result, thresh, cv::COLOR_RGB2GRAY);
-          cv::threshold(thresh, thresh, 32, 255, cv::THRESH_BINARY);
+          mask.copyTo(thresh);
+          cv::threshold(thresh, thresh, 1, 255, cv::THRESH_BINARY);
           cv::Canny(thresh, thresh, 1, 255);
 
           cv::morphologyEx(thresh, thresh, cv::MORPH_DILATE, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)));
           cv::morphologyEx(thresh, thresh, cv::MORPH_CLOSE, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5)));
 
           std::vector<std::vector<cv::Point>> cnts;
+
           cv::findContours(thresh, cnts, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
-          cv::Point tl, tr, bl, br;
 
           auto width_ = result.cols;
           auto height_ = result.rows;
           /* constrain set manual */
-          const auto half_constrain = height_ / 2;
-          const auto xl_constrain = width_ * 0.04;
-          const auto xr_constrain = width_ * 0.01;
-          tl = cnts[0][0];
-          tr = cv::Point(width_, 0);
-          bl = cv::Point(0, 0);
-          br = cv::Point(0, 0);
-
+          const auto half_h = height_ >> 1;
+          const auto half_w = width_ >> 1;
+          cv::Point tl(half_w, half_h);
+          cv::Point tr(width_, height_);
+          cv::Point bl = cnts[0][0];
+          cv::Point br = cnts[0][0];
+          const auto xl_constrain = width_ * 0.03;
+          const auto xr_constrain = width_ * 0.06;
           for(const auto& pcnt : cnts){
-              for(const auto& pt : pcnt){
-                if (tl.x > pt.x)
-                  tl = pt;
-                if (pt.y < half_constrain && tr.x < pt.x && tr.y >= pt.y)
-                  tr = pt;
-                if (pt.x <= xl_constrain && bl.x <= pt.x && bl.y < pt.y)
-                  bl = pt;
-                if (pt.x >= (width_ - xr_constrain) && br.y <= pt.y)
-                  br = pt;
+              for (const auto& pt : pcnt){
+                  if (bl.x >= pt.x)
+                    bl = pt;
+                  if (br.x < pt.x)
+                    br = pt;
+                  if (pt.x < xl_constrain && tl.x > pt.x && tl.y > pt.y)
+                    tl = pt;
+                  if (pt.x > (width_ - xr_constrain) && tr.x > pt.x && tr.y > pt.y)
+                    tr = pt;
               }
           }
-          auto temp = cv::Point(width_ / 2 + 75, 50);
-/*
-          cv::circle(result, tl, 10, cv::Scalar(0, 255, 255), -1);
-          cv::circle(result, tr, 10, cv::Scalar(0, 255, 0), -1);
-          cv::circle(result, bl, 10, cv::Scalar(0, 0, 255), -1);
-          cv::circle(result, br, 10, cv::Scalar(255, 0, 255), -1);
-          cv::circle(result, temp, 10, cv::Scalar(255, 255, 255), -1);
-          cv::imshow("Cam0", result);
-*/
 
-          //resSize = result.size();
-          const auto offset = (tr.x < br.x) ? width_ - tr.x : width_ - br.x;
-          resSize = cv::Size(width_ - offset, height_);
+          save_warpptr("corner_warppts.yaml", tl, tr, bl, br);
 
-          std::vector<cv::Point_<float>> src {tl, temp, bl, br};
-          std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(temp.x, 0), cv::Point(0, height_), cv::Point(width_, height_)};
+          resSize = result.size();
+          //const auto offset = (tr.x < br.x) ? width_ - tr.x : width_ - br.x;
+          //resSize = cv::Size(width_ - offset, height_);
+
+          std::vector<cv::Point_<float>> src {tl, tr, bl, br};
+          std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0), cv::Point(0, height_), cv::Point(width_, height_)};
           transformM = cv::getPerspectiveTransform(src, dst);
+
 
           return true;
 }
 #endif
 
-
+void SurroundView::save_warpptr(const std::string& warpfile, const cv::Point& tl, const cv::Point& tr, const cv::Point& bl, const cv::Point& br)
+{
+    cv::FileStorage WPTSfout(warpfile, cv::FileStorage::WRITE);
+    WPTSfout << "tl" << tl;
+    WPTSfout << "tr" << tr;
+    WPTSfout << "bl" << bl;
+    WPTSfout << "br" << br;
+}
 
 
 bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::GpuMat& blend_img)

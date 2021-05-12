@@ -13,7 +13,7 @@ class AutoCalib
 private:
         size_t imgs_num = 0;
         double conf_thresh = 0.8;
-        double match_conf = 0.6;
+        double match_conf = 0.55;
         int maxpoints = 1000;
         double work_scale = 1;
         double warped_image_scale = 1.;

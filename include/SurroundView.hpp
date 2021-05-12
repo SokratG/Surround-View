@@ -44,6 +44,7 @@ private:
 #endif
 #ifdef CUT_OFF_FRAME
 private:
+        void save_warpptr(const std::string& warpfile, const cv::Point& tl, const cv::Point& tr, const cv::Point& bl, const cv::Point& br);
         bool prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs);
         bool getDataFromFile(const std::string& dirpath);
 #endif
