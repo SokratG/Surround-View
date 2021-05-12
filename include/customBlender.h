@@ -7,7 +7,7 @@ Simple blender which puts one image over another.
 #include "opencv2/stitching/detail/util.hpp"
 #include <cuda_runtime.h>
 
-
+// ------------------------------- CUDABlender --------------------------------
 class CUDABlender
 {
 private:
@@ -46,12 +46,13 @@ public:
 };
 
 
-
+// ------------------------------- CUDAFeatherBlender --------------------------------
 class CUDAFeatherBlender
 {
 private:
         cudaStream_t _cudaStreamDst;
         cudaStream_t _cudaStreamDst_weight;
+        bool use_cache_weight_ = false;
 public:
         CUDAFeatherBlender(const float sharpness = 0.02f);
         ~CUDAFeatherBlender();
@@ -75,8 +76,39 @@ public:
         cv::cuda::GpuMat dst_weight_map_;
         cv::Rect dst_roi_;
         std::vector<cv::cuda::GpuMat> weight_maps_;
-        int idx_weight_map_;
         float sharpness_;
+};
+
+
+
+class CUDAMultiBandBlender
+{
+private:
+        cudaStream_t _cudaStreamDst;
+        cudaStream_t _cudaStreamDst_weight;
         bool use_cache_weight_ = false;
+private:
+        void createWeightMap(const cv::cuda::GpuMat& mask, cv::cuda::GpuMat& weight_map, cv::cuda::Stream& streamObj = cv::cuda::Stream::Null());
+public:
+        CUDAMultiBandBlender(const int numbands_ = 1);
+        ~CUDAMultiBandBlender();
+
+        void prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes);
+
+        void prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes, const std::vector<cv::cuda::GpuMat>& masks);
+
+        void prepare(cv::Rect dst_roi);
+
+        void feed(cv::cuda::GpuMat& img, cv::cuda::GpuMat& mask, const cv::Point& tl, cv::cuda::Stream& streamObj = cv::cuda::Stream::Null());
+
+        void feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, const cv::Point& tl, const int idx, cv::cuda::Stream& streamObj = cv::cuda::Stream::Null());
+
+        void blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj = cv::cuda::Stream::Null());
+public:
+        cv::cuda::GpuMat dst_, dst_mask_;
+        cv::cuda::GpuMat dst_weight_map_;
+        cv::Rect dst_roi_;
+        std::vector<cv::cuda::GpuMat> weight_maps_;
+        int numbands;
 };
 

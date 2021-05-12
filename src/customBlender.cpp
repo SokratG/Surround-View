@@ -23,7 +23,6 @@ extern "C" {
 static constexpr float WEIGHT_EPS = 1e-5f;
 
 // ------------------------------- CUDABlender --------------------------------
-
 CUDABlender::CUDABlender()
 {
 	if (cudaStreamCreate(&_cudaStreamImage) != cudaError::cudaSuccess)
@@ -97,7 +96,6 @@ void CUDABlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::c
 
 
 // ------------------------------- CUDAFeatherBlender --------------------------------
-
 CUDAFeatherBlender::CUDAFeatherBlender(const float sharpness) :
       sharpness_(sharpness), use_cache_weight_(false)
 {
@@ -191,8 +189,6 @@ void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, c
 
 
 
-
-
  void CUDAFeatherBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj)
  {
      if (_cudaStreamDst)
@@ -225,5 +221,61 @@ void CUDAFeatherBlender::prepare(const std::vector<cv::Point> &corners, const st
 
     use_cache_weight_ = true;
 }
+
+
+
+
+// ------------------------------- CUDAMultiBandBlender --------------------------------
+CUDAMultiBandBlender::CUDAMultiBandBlender(const int numbands_) : numbands(numbands_), use_cache_weight_(false)
+{
+  if (cudaStreamCreate(&_cudaStreamDst) != cudaError::cudaSuccess)
+          _cudaStreamDst = NULL;
+  if (cudaStreamCreate(&_cudaStreamDst_weight) != cudaError::cudaSuccess)
+          _cudaStreamDst_weight = NULL;
+}
+
+CUDAMultiBandBlender::~CUDAMultiBandBlender()
+{
+  if(_cudaStreamDst)
+     cudaStreamDestroy(_cudaStreamDst);
+  if(_cudaStreamDst_weight)
+     cudaStreamDestroy(_cudaStreamDst_weight);
+}
+
+
+
+void CUDAMultiBandBlender::prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes)
+{
+	prepare(cv::detail::resultRoi(corners, sizes));
+}
+
+
+void CUDAMultiBandBlender::prepare(cv::Rect dst_roi)
+{
+	dst_ = cv::cuda::GpuMat(dst_roi.size(), CV_16SC3);
+	dst_.setTo(cv::Scalar::all(0));
+	dst_mask_ = cv::cuda::GpuMat(dst_roi.size(), CV_8U);
+	dst_mask_.setTo(cv::Scalar::all(0));
+	dst_roi_ = dst_roi;
+
+	dst_weight_map_.create(dst_roi.size(), CV_32F);
+	dst_weight_map_.setTo(cv::Scalar::all(0));
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

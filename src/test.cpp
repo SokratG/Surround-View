@@ -89,7 +89,7 @@ int CameraCycle()
 		    cv::cuda::GpuMat res;
 
 		    sv.stitch(datas, res);
-		    //cv::imshow(win1, res);
+		    cv::imshow(win1, res);
 #ifdef GL_YES
 		    bool okRender = dp->render(res);
 		    if (!okRender)

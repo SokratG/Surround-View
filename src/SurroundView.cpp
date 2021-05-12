@@ -7,8 +7,8 @@
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/cudaarithm.hpp>
 #include <opencv2/cudafilters.hpp>
-#include <opencv2/stitching/detail/blenders.hpp>
-#include <opencv2/imgproc.hpp>
+
+//#include <opencv2/imgproc.hpp>
 
 #include <omp.h>
 
@@ -184,6 +184,7 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           blender.blend(result, mask);
           result.convertTo(result, CV_8U);
 
+
           cv::Mat thresh;
           mask.copyTo(thresh);
           cv::threshold(thresh, thresh, 1, 255, cv::THRESH_BINARY);
@@ -223,13 +224,10 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           save_warpptr("corner_warppts.yaml", tl, tr, bl, br);
 
           resSize = result.size();
-          //const auto offset = (tr.x < br.x) ? width_ - tr.x : width_ - br.x;
-          //resSize = cv::Size(width_ - offset, height_);
-
+          resSize.width = resSize.width - ((resSize.width - tr.x) >> 1);
           std::vector<cv::Point_<float>> src {tl, tr, bl, br};
           std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0), cv::Point(0, height_), cv::Point(width_, height_)};
           transformM = cv::getPerspectiveTransform(src, dst);
-
 
           return true;
 }
@@ -262,34 +260,16 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::
 
           gpuimg_warped.convertTo(gpuimg_warped_s, CV_16S, streamObj);
 
-
           cuBlender->feed(gpuimg_warped_s, gpu_seam_masks[i], corners[i], i, streamObj);
 
     }
 
     cuBlender->blend(stitch, mask_, streamObj);
 
-#ifdef COLOR_CORRECTION
-
-    stitch.convertTo(gpuimg_warped, CV_8U, streamObj);
-
-    cv::cuda::cvtColor(gpuimg_warped, gpuimg_warped, cv::COLOR_RGB2YCrCb, 0, streamObj);
-
-    cv::cuda::split(gpuimg_warped, inrgb, streamObj);
-
-    cv::cuda::equalizeHist(inrgb[0], inrgb[0], streamObj);
-
-    cv::cuda::merge(inrgb, gpuimg_warped, streamObj);
-
-    cv::cuda::cvtColor(gpuimg_warped, blend_img, cv::COLOR_YCrCb2RGB, 0, streamObj);
-
-#else
-    /*
-    stitch.convertTo(blend_img, CV_8U, streamObj);
-    */
     cv::cuda::warpPerspective(stitch, temp, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
+
     temp.convertTo(blend_img, CV_8U, streamObj);
-#endif
+
     return true;
 }
 

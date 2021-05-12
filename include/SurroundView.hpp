@@ -1,7 +1,7 @@
 #include <string>
-#include <opencv2/stitching/detail/motion_estimators.hpp>
 #include <opencv2/stitching/detail/camera.hpp>
 #include <opencv2/cudaimgproc.hpp>
+#include <opencv2/stitching/detail/blenders.hpp>
 
 #include <utility>
 #include <algorithm>
@@ -39,9 +39,7 @@ private:
         // --------------
 	cv::cuda::Stream streamObj;
         std::shared_ptr<CUDAFeatherBlender> cuBlender;
-#ifdef COLOR_CORRECTION
-        std::vector<cv::cuda::GpuMat> inrgb = std::move(std::vector<cv::cuda::GpuMat>(3));
-#endif
+
 #ifdef CUT_OFF_FRAME
 private:
         void save_warpptr(const std::string& warpfile, const cv::Point& tl, const cv::Point& tr, const cv::Point& bl, const cv::Point& br);
@@ -52,7 +50,7 @@ public:
         bool getInit() const {return isInit;}
         cv::Size getResSize() const {return resSize;}
 public:
-        SurroundView() :cuBlender(nullptr) {}
+        SurroundView() : cuBlender(nullptr) {}
         bool init(const std::vector<cv::cuda::GpuMat>& imgs);
         bool initFromFile(const std::string& dirpath, const std::vector<cv::cuda::GpuMat>& imgs);
         bool stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::GpuMat& blend_img);
