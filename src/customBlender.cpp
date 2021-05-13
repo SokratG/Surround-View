@@ -1,21 +1,33 @@
 #include "customBlender.h"
 #include <opencv2/cudaarithm.hpp>
-#include "opencv2/highgui.hpp"
+#include <opencv2/cudawarping.hpp>
 #include <opencv2/imgproc.hpp>
+
+#include <omp.h>
 
 
 typedef unsigned char uchar;
 
 extern "C" {
 	void feedCUDA(uchar* img, uchar* mask, uchar* dst, uchar* dst_mask, int dx, int dy, int width, int height, int img_step, int dst_step, int mask_step, int mask_dst_step);
-	void feedCUDA_Async(uchar* img, uchar* mask, uchar* dst, uchar* dst_mask, int dx, int dy, int width, int height, int img_step, int dst_step, int mask_step, int mask_dst_step, cudaStream_t streamimage, cudaStream_t streammask);
-	void normalizeUsingWeightMapGpu32F(const cv::cuda::PtrStepf weight, cv::cuda::PtrStep<short> src,
-						      const int width, const int height);
+	void feedCUDA_Async(uchar* img, uchar* mask, uchar* dst, uchar* dst_mask,
+			    int dx, int dy, int width, int height, int img_step, int dst_step, int mask_step, int mask_dst_step,
+			    cudaStream_t streamimage, cudaStream_t streammask);
+
 	void weightBlendCUDA(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
 	    cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, const cv::Size& img_size, int dx, int dy);
 	void weightBlendCUDA_Async(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
 	    cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, const cv::Size& img_size, int dx, int dy,
 				   cudaStream_t stream_dst, cudaStream_t stream_dst_weight);
+
+	void addSrcWeightGpu32F(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
+				cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, cv::Rect &rc);
+	void addSrcWeightGpu32F_Async(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
+				cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, cv::Rect &rc,
+				cudaStream_t stream_dst, cudaStream_t stream_dst_weight);
+
+	void normalizeUsingWeightMapGpu32F(const cv::cuda::PtrStepf weight, cv::cuda::PtrStep<short> src,
+						      const int width, const int height);
 	void normalizeUsingWeightMapGpu32F_Async(const cv::cuda::PtrStepf weight, cv::cuda::PtrStep<short> src,
 						      const int width, const int height, cudaStream_t stream_dst);
 }
@@ -143,7 +155,6 @@ void CUDAFeatherBlender::createWeightMap(const cv::cuda::GpuMat& mask, cv::cuda:
       cv::cuda::GpuMat temp;
       cv::cuda::multiply(weight, sharpness_, temp, 1, -1, streamObj);
       cv::cuda::threshold(temp, weight, 1.f, 1.f, cv::THRESH_TRUNC, streamObj);
-
 }
 
 void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, const cv::Point& tl, cv::cuda::Stream& streamObj)
@@ -188,7 +199,6 @@ void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, c
 }
 
 
-
  void CUDAFeatherBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj)
  {
      if (_cudaStreamDst)
@@ -210,7 +220,6 @@ void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, c
  }
 
 
-
 void CUDAFeatherBlender::prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes, const std::vector<cv::cuda::GpuMat>& masks)
 {
     prepare(cv::detail::resultRoi(corners, sizes));
@@ -225,43 +234,213 @@ void CUDAFeatherBlender::prepare(const std::vector<cv::Point> &corners, const st
 
 
 
+
+
 // ------------------------------- CUDAMultiBandBlender --------------------------------
-CUDAMultiBandBlender::CUDAMultiBandBlender(const int numbands_) : numbands(numbands_), use_cache_weight_(false)
+CUDAMultiBandBlender::CUDAMultiBandBlender(const int numbands_) : numbands(numbands_)
 {
-  if (cudaStreamCreate(&_cudaStreamDst) != cudaError::cudaSuccess)
-          _cudaStreamDst = NULL;
-  if (cudaStreamCreate(&_cudaStreamDst_weight) != cudaError::cudaSuccess)
-          _cudaStreamDst_weight = NULL;
+      CV_Assert(numbands_ >= 1);
+
+      if (cudaStreamCreate(&_cudaStreamDst) != cudaError::cudaSuccess)
+              _cudaStreamDst = NULL;
+      if (cudaStreamCreate(&_cudaStreamDst_weight) != cudaError::cudaSuccess)
+              _cudaStreamDst_weight = NULL;
 }
 
 CUDAMultiBandBlender::~CUDAMultiBandBlender()
 {
-  if(_cudaStreamDst)
-     cudaStreamDestroy(_cudaStreamDst);
-  if(_cudaStreamDst_weight)
-     cudaStreamDestroy(_cudaStreamDst_weight);
+      if(_cudaStreamDst)
+         cudaStreamDestroy(_cudaStreamDst);
+      if(_cudaStreamDst_weight)
+         cudaStreamDestroy(_cudaStreamDst_weight);
 }
 
 
-
-void CUDAMultiBandBlender::prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes)
+void CUDAMultiBandBlender::prepare_roi(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes)
 {
-	prepare(cv::detail::resultRoi(corners, sizes));
+	prepare_pyr(cv::detail::resultRoi(corners, sizes));
+
+	for (auto i = 0; i < sizes.size(); ++i){
+	    const auto& tl =  corners[i];
+	    const auto& size_ = sizes[i];
+	     // Keep source image in memory with small border
+	    int gap = 3 * (1 << numbands);
+	    cv::Point tl_new(std::max(dst_roi_.x, tl.x - gap),
+			 std::max(dst_roi_.y, tl.y - gap));
+	    cv::Point br_new(std::min(dst_roi_.br().x, tl.x + size_.width + gap),
+			 std::min(dst_roi_.br().y, tl.y + size_.height + gap));
+
+	    // Ensure coordinates of top-left, bottom-right corners are divided by (1 << num_bands_).
+	    // After that scale between layers is exactly 2.
+	    //
+	    // We do it to avoid interpolation problems when keeping sub-images only. There is no such problem when
+	    // image is bordered to have size equal to the final image size, but this is too memory hungry approach.
+	    tl_new.x = dst_roi_.x + (((tl_new.x - dst_roi_.x) >> numbands) << numbands);
+	    tl_new.y = dst_roi_.y + (((tl_new.y - dst_roi_.y) >> numbands) << numbands);
+	    auto width = br_new.x - tl_new.x;
+	    auto height = br_new.y - tl_new.y;
+	    width += ((1 << numbands) - width % (1 << numbands)) % (1 << numbands);
+	    height += ((1 << numbands) - height % (1 << numbands)) % (1 << numbands);
+	    br_new.x = tl_new.x + width;
+	    br_new.y = tl_new.y + height;
+	    auto dy = std::max(br_new.y - dst_roi_.br().y, 0);
+	    auto dx = std::max(br_new.x - dst_roi_.br().x, 0);
+	    tl_new.x -= dx; br_new.x -= dx;
+	    tl_new.y -= dy; br_new.y -= dy;
+
+	    auto top = tl.y - tl_new.y;
+	    auto left = tl.x - tl_new.x;
+	    auto bottom = br_new.y - tl.y - size_.height;
+	    auto right = br_new.x - tl.x - size_.width;
+	    gpu_imgs_borders_.emplace_back(top, left, bottom, right);
+	    gpu_imgs_corners_.emplace_back(tl_new, br_new);
+
+
+	    gpu_imgs_with_border_.push_back(cv::cuda::GpuMat());
+	    gpu_weight_pyr_gauss_vec_.push_back(std::vector<cv::cuda::GpuMat>(numbands + 1));
+	    gpu_src_pyr_laplace_vec_.push_back(std::vector<cv::cuda::GpuMat>(numbands + 1));
+	    gpu_ups_.push_back(std::vector<cv::cuda::GpuMat>(numbands));
+	}
+
+	for (auto i = 0; i < sizes.size(); ++i){
+	    gpu_ups_.push_back(std::vector<cv::cuda::GpuMat>(numbands + 1));
+	}
+
 }
 
-
-void CUDAMultiBandBlender::prepare(cv::Rect dst_roi)
+void CUDAMultiBandBlender::prepare_pyr(const cv::Rect& dst_roi)
 {
-	dst_ = cv::cuda::GpuMat(dst_roi.size(), CV_16SC3);
-	dst_.setTo(cv::Scalar::all(0));
+	dst_roi_final_ = dst_roi;
+	dst_roi_ = dst_roi;
+	dst_roi_.width += ((1 << numbands) - dst_roi.width % (1 << numbands)) % (1 << numbands);
+	dst_roi_.height += ((1 << numbands) - dst_roi.height % (1 << numbands)) % (1 << numbands);
 	dst_mask_ = cv::cuda::GpuMat(dst_roi.size(), CV_8U);
 	dst_mask_.setTo(cv::Scalar::all(0));
-	dst_roi_ = dst_roi;
 
-	dst_weight_map_.create(dst_roi.size(), CV_32F);
-	dst_weight_map_.setTo(cv::Scalar::all(0));
+
+	gpu_dst_pyr_laplace_.resize(numbands + 1);
+	gpu_dst_pyr_laplace_[0].create(dst_roi_.size(), CV_16SC3);
+	gpu_dst_pyr_laplace_[0].setTo(cv::Scalar::all(0));
+
+	gpu_dst_band_weights_.resize(numbands + 1);
+	gpu_dst_band_weights_[0].create(dst_roi_.size(), CV_32F);
+	gpu_dst_band_weights_[0].setTo(0);
+
+	for(auto i = 1; i <= numbands; ++i){
+	    auto l_half_rows_ = (gpu_dst_pyr_laplace_[i-1].rows + 1) / 2;
+	    auto l_half_cols_ = (gpu_dst_pyr_laplace_[i-1].cols + 1) / 2;
+	    gpu_dst_pyr_laplace_[i].create(l_half_rows_, l_half_cols_, CV_16SC3);
+	    gpu_dst_pyr_laplace_[i].setTo(cv::Scalar::all(0));
+
+	    auto b_half_rows_ = (gpu_dst_band_weights_[i-1].rows + 1) / 2;
+	    auto b_half_cols_ = (gpu_dst_band_weights_[i-1].cols + 1) / 2;
+	    gpu_dst_band_weights_[i].create(b_half_rows_, b_half_cols_, CV_32F);
+	    gpu_dst_band_weights_[i].setTo(0);
+	}
+
+
 }
 
+
+void CUDAMultiBandBlender::prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes, const std::vector<cv::cuda::GpuMat>& masks)
+{
+      prepare_roi(corners, sizes);
+
+      constexpr auto weight_coef = 1. / 255.;
+
+      for(auto i = 0; i < masks.size(); ++i){
+          cv::cuda::GpuMat gpu_weight_map_;
+          masks[i].convertTo(gpu_weight_map_, CV_32F, weight_coef);
+          auto top = gpu_imgs_borders_[i].top;
+          auto left = gpu_imgs_borders_[i].left;
+          auto bottom = gpu_imgs_borders_[i].bottom;
+          auto right = gpu_imgs_borders_[i].right;
+          cv::cuda::copyMakeBorder(gpu_weight_map_, gpu_weight_pyr_gauss_vec_[i][0], top, bottom, left, right, cv::BORDER_CONSTANT);
+          for (auto j = 0; j < numbands; ++j)
+              cv::cuda::pyrDown(gpu_weight_pyr_gauss_vec_[i][j], gpu_weight_pyr_gauss_vec_[i][j + 1]);
+      }
+}
+
+
+void CUDAMultiBandBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, const int idx, cv::cuda::Stream& streamObj)
+{
+      CV_Assert(_img.type() == CV_16SC3);
+      CV_Assert(_mask.type() == CV_8U);
+      CV_Assert(idx >= 0);
+
+      cv::cuda::copyMakeBorder(_img, gpu_imgs_with_border_[idx], gpu_imgs_borders_[idx].top, gpu_imgs_borders_[idx].bottom,
+                               gpu_imgs_borders_[idx].left, gpu_imgs_borders_[idx].right, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
+
+      gpu_imgs_with_border_[idx].convertTo(gpu_src_pyr_laplace_vec_[idx][0], CV_16S);
+
+      for(auto i = 0; i < numbands; ++i)
+          cv::cuda::pyrDown(gpu_src_pyr_laplace_vec_[idx][i], gpu_src_pyr_laplace_vec_[idx][i + 1], streamObj);
+
+      for(auto i = 0; i < numbands; ++i){
+          cv::cuda::pyrUp(gpu_src_pyr_laplace_vec_[idx][i + 1], gpu_ups_[idx][i], streamObj);
+          cv::cuda::subtract(gpu_src_pyr_laplace_vec_[idx][i], gpu_ups_[idx][i], gpu_src_pyr_laplace_vec_[idx][i], cv::noArray(), -1, streamObj);
+      }
+
+      auto y_tl = gpu_imgs_corners_[idx].tl.y - dst_roi_.y;
+      auto y_br = gpu_imgs_corners_[idx].br.y - dst_roi_.y;
+      auto x_tl = gpu_imgs_corners_[idx].tl.x - dst_roi_.x;
+      auto x_br = gpu_imgs_corners_[idx].br.x - dst_roi_.x;
+
+      for(auto i = 0; i <= numbands; ++i){
+           cv::Rect rc(x_tl, y_tl, x_br - x_tl, y_br - y_tl);
+
+           auto& src_pyr_laplace = gpu_src_pyr_laplace_vec_[idx][i];
+
+           auto dst_pyr_laplace = gpu_dst_pyr_laplace_[i](rc);
+
+           auto& weight_pyr_gauss = gpu_weight_pyr_gauss_vec_[idx][i];
+           auto dst_band_weight = gpu_dst_band_weights_[i](rc);
+
+           addSrcWeightGpu32F_Async(src_pyr_laplace, weight_pyr_gauss, dst_pyr_laplace, dst_band_weight, rc, _cudaStreamDst, _cudaStreamDst_weight);
+
+           // dicrease size by 2
+           x_tl >>= 1; y_tl >>= 1;
+           x_br >>= 1; y_br >>= 1;
+      }
+}
+
+void CUDAMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj)
+{
+    cv::Rect dst_rc(0, 0, dst_roi_final_.width, dst_roi_final_.height);
+
+
+    for (auto i = 0; i <= numbands; ++i){
+        auto dst_i = gpu_dst_pyr_laplace_[i];
+        auto weight_i = gpu_dst_band_weights_[i];
+        normalizeUsingWeightMapGpu32F_Async(weight_i, dst_i, weight_i.cols, weight_i.rows, _cudaStreamDst);
+    }
+
+    for(size_t i = numbands; i > 0; --i){
+        auto last_idx = gpu_ups_.size() - 1;
+        cv::cuda::pyrUp(gpu_dst_pyr_laplace_[i], gpu_ups_[last_idx][numbands-i], streamObj);
+        cv::cuda::add(gpu_ups_[last_idx][numbands-i], gpu_dst_pyr_laplace_[i - 1], gpu_dst_pyr_laplace_[i - 1], cv::noArray(), -1, streamObj);
+    }
+
+    cv::cuda::GpuMat mask;
+    cv::cuda::compare(gpu_dst_band_weights_[0](dst_rc), WEIGHT_EPS, dst_mask_, cv::CMP_GT, streamObj);
+    cv::cuda::compare(dst_mask_, 0, mask, cv::CMP_EQ, streamObj);
+
+    gpu_dst_pyr_laplace_[0](dst_rc).setTo(cv::Scalar::all(0), mask, streamObj);
+    gpu_dst_pyr_laplace_[0](dst_rc).convertTo(dst, CV_16S, streamObj);
+    dst_mask_.copyTo(dst_mask, streamObj);
+
+
+#ifndef NO_OMP
+    #pragma omp parallel for default(none) shared(streamObj)
+#endif
+    for(auto i = 0; i < numbands+1; ++i){
+        gpu_dst_band_weights_[i].setTo(0, streamObj);
+        gpu_dst_pyr_laplace_[i].setTo(cv::Scalar::all(0), streamObj);
+    }
+
+    dst_mask_.setTo(cv::Scalar::all(0), streamObj);
+
+}
 
 
 

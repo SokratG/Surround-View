@@ -89,7 +89,7 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
     seam_finder->find(imgs_warped_f, corners, masks_warped_);
 
 
-    cv::Mat morphel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+    cv::Mat morphel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
     cv::Ptr<cv::cuda::Filter> dilateFilter = cv::cuda::createMorphologyFilter(cv::MORPH_DILATE, masks_warped_[0].type(), morphel);
 
     cv::cuda::GpuMat tempmask, gpu_dilate_mask, gpu_seam_mask;

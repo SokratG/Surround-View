@@ -2,13 +2,13 @@
 #include "AutoCalib.hpp"
 #include "SeamDetection.hpp"
 #include "SurroundView.hpp"
+#include <opencv2/stitching/detail/blenders.hpp>
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/cudaarithm.hpp>
 #include <opencv2/cudafilters.hpp>
 
-//#include <opencv2/imgproc.hpp>
 
 #include <omp.h>
 
@@ -59,16 +59,19 @@ bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	texYmap = smd.getYmap();
 
 
-#ifdef CUT_OFF_FRAME
         res = prepareCutOffFrame(cpu_imgs);
         if (!res){
             std::cerr << "Error can't prepare blending ROI rect...\n";
             return false;
         }
-#endif
+
 
 	cuBlender = std::make_shared<CUDAFeatherBlender>(sharpness);
 	cuBlender->prepare(corners, sizes, gpu_seam_masks);
+
+	mBlender = std::make_shared<CUDAMultiBandBlender>(5);
+	mBlender->prepare(corners, sizes, gpu_seam_masks);
+
 
 	isInit = true;
 
@@ -77,7 +80,7 @@ bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs){
 }
 
 
-bool SurroundView::initFromFile(const std::string& dirpath, const std::vector<cv::cuda::GpuMat>& imgs)
+bool SurroundView::initFromFile(const std::string& dirpath, const std::vector<cv::cuda::GpuMat>& imgs, const bool use_filewarp_pts)
 {
     if (isInit){
         std::cerr << "SurroundView already initialize...\n";
@@ -104,7 +107,7 @@ bool SurroundView::initFromFile(const std::string& dirpath, const std::vector<cv
 
     bool res = false;
     if (!isstart){ // delete after test
-        res = getDataFromFile(dirpath);
+        res = getDataFromFile(dirpath, use_filewarp_pts);
         if (!res){
             std::cerr << "Error can't read camera parameters...\n";
             return false;
@@ -124,16 +127,19 @@ bool SurroundView::initFromFile(const std::string& dirpath, const std::vector<cv
         isstart = true;
     }
 
-#ifdef CUT_OFF_FRAME
-    res = prepareCutOffFrame(cpu_imgs);
-    if (!res){
-        std::cerr << "Error can't prepare blending ROI rect...\n";
-        return false;
+    if (!use_filewarp_pts){
+        res = prepareCutOffFrame(cpu_imgs);
+        if (!res){
+            std::cerr << "Error can't prepare blending ROI rect...\n";
+            return false;
+        }
     }
-#endif
 
     cuBlender = std::make_shared<CUDAFeatherBlender>(sharpness);
     cuBlender->prepare(corners, sizes, gpu_seam_masks);
+
+    mBlender = std::make_shared<CUDAMultiBandBlender>(5);
+    mBlender->prepare(corners, sizes, gpu_seam_masks);
 
     isInit = true;
 
@@ -142,13 +148,13 @@ bool SurroundView::initFromFile(const std::string& dirpath, const std::vector<cv
 }
 
 
-bool SurroundView::getDataFromFile(const std::string& dirpath)
+bool SurroundView::getDataFromFile(const std::string& dirpath, const bool use_filewarp_pts)
 {
     Ks_f = std::move(std::vector<cv::Mat>(imgs_num));
     R = std::move(std::vector<cv::Mat>(imgs_num));
     auto fullpath = dirpath + "Camparam";
     for(auto i = 0; i < imgs_num; ++i){
-           std::string KRpath{fullpath + std::to_string(i) + ".txt"};
+           std::string KRpath{fullpath + std::to_string(i) + ".yaml"};
            cv::FileStorage KRfout(KRpath, cv::FileStorage::READ);
            warped_image_scale = KRfout["FocalLength"];
            if (!KRfout.isOpened()){
@@ -160,11 +166,34 @@ bool SurroundView::getDataFromFile(const std::string& dirpath)
            K_.convertTo(Ks_f[i], CV_32F);
            KRfout["Rotation"] >> R[i];
     }
+
+    if (use_filewarp_pts){
+          std::string WARP_PTS_path{dirpath + "corner_warppts.yaml"};
+          cv::Point tl, tr, bl, br;
+          cv::FileStorage WPTSfout(WARP_PTS_path, cv::FileStorage::READ);
+          if (!WPTSfout.isOpened()){
+              std::cerr << "Error can't open camera param file: " << WARP_PTS_path << "...\n";
+              return false;
+          }
+          WPTSfout["tl"] >> tl; WPTSfout["tr"] >> tr;
+          WPTSfout["bl"] >> bl; WPTSfout["br"] >> br;
+          WPTSfout["res_size"] >> resSize;
+          const auto width_ = resSize.width;
+          const auto height_ = resSize.height;
+
+          /* crop last and first camera image on seam */
+          resSize.width = resSize.width - ((resSize.width - tr.x) >> 1);
+
+          std::vector<cv::Point_<float>> src {tl, tr, bl, br};
+          std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0), cv::Point(0, height_), cv::Point(width_, height_)};
+          transformM = cv::getPerspectiveTransform(src, dst);
+    }
+
+
     return true;
 }
 
-#ifdef CUT_OFF_FRAME
-#include <opencv2/highgui.hpp>
+
 bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 {
 
@@ -219,11 +248,12 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
                   if (pt.x > (width_ - xr_constrain) && tr.x > pt.x && tr.y > pt.y)
                     tr = pt;
               }
-          }
-
-          save_warpptr("corner_warppts.yaml", tl, tr, bl, br);
+          }       
 
           resSize = result.size();
+
+          save_warpptr("corner_warppts.yaml", resSize, tl, tr, bl, br);
+
           resSize.width = resSize.width - ((resSize.width - tr.x) >> 1);
           std::vector<cv::Point_<float>> src {tl, tr, bl, br};
           std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0), cv::Point(0, height_), cv::Point(width_, height_)};
@@ -231,15 +261,17 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 
           return true;
 }
-#endif
 
-void SurroundView::save_warpptr(const std::string& warpfile, const cv::Point& tl, const cv::Point& tr, const cv::Point& bl, const cv::Point& br)
+void SurroundView::save_warpptr(const std::string& warpfile, const cv::Size& res_size,
+                                const cv::Point& tl, const cv::Point& tr, const cv::Point& bl, const cv::Point& br)
 {
     cv::FileStorage WPTSfout(warpfile, cv::FileStorage::WRITE);
+    WPTSfout << "res_size" << res_size;
     WPTSfout << "tl" << tl;
     WPTSfout << "tr" << tr;
     WPTSfout << "bl" << bl;
     WPTSfout << "br" << br;
+
 }
 
 
@@ -253,18 +285,19 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::
     cv::cuda::GpuMat gpuimg_warped_s, gpuimg_warped;
     cv::cuda::GpuMat stitch, mask_, temp;
 
+#ifndef NO_OMP
     #pragma omp parallel for default(none) shared(imgs) private(gpuimg_warped, gpuimg_warped_s)
+#endif
     for(size_t i = 0; i < imgs_num; ++i){
 
-          cv::cuda::remap(*imgs[i], gpuimg_warped, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
+          cv::cuda::remap(*imgs[i], gpuimg_warped, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, cv::Scalar(), streamObj);
 
           gpuimg_warped.convertTo(gpuimg_warped_s, CV_16S, streamObj);
 
-          cuBlender->feed(gpuimg_warped_s, gpu_seam_masks[i], corners[i], i, streamObj);
-
+          mBlender->feed(gpuimg_warped_s, gpu_seam_masks[i], i, streamObj);
     }
 
-    cuBlender->blend(stitch, mask_, streamObj);
+    mBlender->blend(stitch, mask_, streamObj);
 
     cv::cuda::warpPerspective(stitch, temp, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
 

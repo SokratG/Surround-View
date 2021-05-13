@@ -643,7 +643,9 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 	
 
 	// do processing
+#ifndef NO_OMP
 	#pragma omp parallel for default(none) shared(buffs, frames)
+#endif
 	for(size_t i = 0; i < _cams.size(); ++i){
 		auto& buff = buffs[i];
 		auto& dataBuffer = _cams[i].buffers[buff.index];

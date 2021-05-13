@@ -76,7 +76,7 @@ int CameraCycle()
 		if (!sv.getInit()){
 			std::vector<cv::cuda::GpuMat> datas {frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame, frames[3].gpuFrame};
 			//auto init = sv.init(datas);
-			auto init = sv.initFromFile("campar/", datas);
+			auto init = sv.initFromFile("campar/", datas, true);
 #ifdef GL_YES
 			if (init){
 			    const auto tex_size = sv.getResSize();

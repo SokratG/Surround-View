@@ -44,7 +44,6 @@ bool AutoCalib::init(const std::vector<cv::Mat>& imgs, const bool savedata)
 }
 
 #include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
 bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs, std::vector<cv::detail::MatchesInfo>& pairwise_matches, std::vector<cv::detail::ImageFeatures>& features)
 {
 	cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 5, 22, 0, 3, cv::ORB::HARRIS_SCORE, 22, 21); // 640x480
@@ -52,14 +51,9 @@ bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs
 	cv::Ptr<cv::detail::FeaturesMatcher> matcher = cv::makePtr<cv::detail::BestOf2NearestMatcher>(true, match_conf);
 
 
-	for (int i = 0; i < imgs_num; ++i){
-	      auto size_ = imgs[i].size();
-	      cv::Mat mask_ = cv::Mat::zeros(size_, CV_8U);
-	      auto offset = static_cast<int>(size_.width * 0.3);
-	      cv::rectangle(mask_, cv::Point(0, 0), cv::Point(offset, size_.height), cv::Scalar(255), -1);
-	      cv::rectangle(mask_, cv::Point(size_.width - offset, 0), cv::Point(size_.width, size_.height), cv::Scalar(255), -1);
+	for (int i = 0; i < imgs_num; ++i)
 	      cv::detail::computeImageFeatures(finder, imgs[i], features[i]);
-	}
+
 
 	(*matcher)(features, pairwise_matches);
 #define DEBUG_P
@@ -138,7 +132,7 @@ void AutoCalib::saveData(const std::string& strpath) const
 {
 
     for(auto i = 0; i < imgs_num; ++i){
-           std::string KRpath{"Camparam" + std::to_string(i) + ".txt"};
+           std::string KRpath{"Camparam" + std::to_string(i) + ".yaml"};
            cv::FileStorage KRfout(KRpath, cv::FileStorage::WRITE);
            KRfout << "FocalLength" << warped_image_scale;
            KRfout << "Intrisic" << Ks_f[i];
