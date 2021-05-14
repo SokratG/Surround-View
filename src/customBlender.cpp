@@ -28,8 +28,6 @@ extern "C" {
 
 	void normalizeUsingWeightMapGpu32F(const cv::cuda::PtrStepf weight, cv::cuda::PtrStep<short> src,
 						      const int width, const int height);
-	void normalizeUsingWeightMapGpu32F_Async(const cv::cuda::PtrStepf weight, cv::cuda::PtrStep<short> src,
-						      const int width, const int height, cudaStream_t stream_dst);
 }
 
 static constexpr float WEIGHT_EPS = 1e-5f;
@@ -201,10 +199,8 @@ void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, c
 
  void CUDAFeatherBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj)
  {
-     if (_cudaStreamDst)
-        normalizeUsingWeightMapGpu32F(dst_weight_map_, dst_, dst_weight_map_.cols, dst_weight_map_.rows);
-     else
-        normalizeUsingWeightMapGpu32F_Async(dst_weight_map_, dst_, dst_weight_map_.cols, dst_weight_map_.rows, _cudaStreamDst);
+
+     normalizeUsingWeightMapGpu32F(dst_weight_map_, dst_, dst_weight_map_.cols, dst_weight_map_.rows);
 
      cv::cuda::compare(dst_weight_map_, WEIGHT_EPS, dst_mask_, cv::CMP_GT, streamObj);
 
@@ -408,11 +404,10 @@ void CUDAMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_ma
 {
     cv::Rect dst_rc(0, 0, dst_roi_final_.width, dst_roi_final_.height);
 
-
     for (auto i = 0; i <= numbands; ++i){
         auto dst_i = gpu_dst_pyr_laplace_[i];
         auto weight_i = gpu_dst_band_weights_[i];
-        normalizeUsingWeightMapGpu32F_Async(weight_i, dst_i, weight_i.cols, weight_i.rows, _cudaStreamDst);
+        normalizeUsingWeightMapGpu32F(weight_i, dst_i, weight_i.cols, weight_i.rows);
     }
 
     for(size_t i = numbands; i > 0; --i){
@@ -434,8 +429,8 @@ void CUDAMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_ma
     #pragma omp parallel for default(none) shared(streamObj)
 #endif
     for(auto i = 0; i < numbands+1; ++i){
-        gpu_dst_band_weights_[i].setTo(0, streamObj);
-        gpu_dst_pyr_laplace_[i].setTo(cv::Scalar::all(0), streamObj);
+        gpu_dst_band_weights_[i].setTo(0);
+        gpu_dst_pyr_laplace_[i].setTo(cv::Scalar::all(0));
     }
 
     dst_mask_.setTo(cv::Scalar::all(0), streamObj);

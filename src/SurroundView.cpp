@@ -58,19 +58,17 @@ bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	texXmap = smd.getXmap();
 	texYmap = smd.getYmap();
 
+	if (cuBlender.get() == nullptr){
+	    cuBlender = std::make_shared<CUDAMultiBandBlender>(numbands);
+	    cuBlender->prepare(corners, sizes, gpu_seam_masks);
+	}
+
 
         res = prepareCutOffFrame(cpu_imgs);
         if (!res){
             std::cerr << "Error can't prepare blending ROI rect...\n";
             return false;
         }
-
-
-	cuBlender = std::make_shared<CUDAFeatherBlender>(sharpness);
-	cuBlender->prepare(corners, sizes, gpu_seam_masks);
-
-	mBlender = std::make_shared<CUDAMultiBandBlender>(5);
-	mBlender->prepare(corners, sizes, gpu_seam_masks);
 
 
 	isInit = true;
@@ -127,6 +125,12 @@ bool SurroundView::initFromFile(const std::string& dirpath, const std::vector<cv
         isstart = true;
     }
 
+
+    if (cuBlender.get() == nullptr){
+        cuBlender = std::make_shared<CUDAMultiBandBlender>(numbands);
+        cuBlender->prepare(corners, sizes, gpu_seam_masks);
+    }
+
     if (!use_filewarp_pts){
         res = prepareCutOffFrame(cpu_imgs);
         if (!res){
@@ -135,11 +139,6 @@ bool SurroundView::initFromFile(const std::string& dirpath, const std::vector<cv
         }
     }
 
-    cuBlender = std::make_shared<CUDAFeatherBlender>(sharpness);
-    cuBlender->prepare(corners, sizes, gpu_seam_masks);
-
-    mBlender = std::make_shared<CUDAMultiBandBlender>(5);
-    mBlender->prepare(corners, sizes, gpu_seam_masks);
 
     isInit = true;
 
@@ -196,26 +195,22 @@ bool SurroundView::getDataFromFile(const std::string& dirpath, const bool use_fi
 
 bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 {
-
-          cv::detail::MultiBandBlender blender(true, 5);
-
-          blender.prepare(cv::detail::resultRoi(corners, sizes));
-
-          cv::cuda::GpuMat warp_, warp_s, warp_img;
+          cv::cuda::GpuMat gpu_result, warp_s, warp_img;
           for(size_t i = 0; i < imgs_num; ++i){
-                  warp_.upload(cpu_imgs[i]);
-                  cv::cuda::remap(warp_, warp_img, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, cv::Scalar(), streamObj);
+                  gpu_result.upload(cpu_imgs[i]);
+                  cv::cuda::remap(gpu_result, warp_img, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, cv::Scalar(), streamObj);
                   warp_img.convertTo(warp_s, CV_16S);
-                  blender.feed(warp_s, gpu_seam_masks[i], corners[i]);
+                  cuBlender->feed(warp_s, gpu_seam_masks[i], i);
           }
 
-          cv::Mat result, mask;
-          blender.blend(result, mask);
-          result.convertTo(result, CV_8U);
 
+          cuBlender->blend(gpu_result, warp_img);
+          cv::Mat result, thresh;
+          gpu_result.download(result);
+          warp_img.download(thresh);
 
-          cv::Mat thresh;
-          mask.copyTo(thresh);
+          // result.convertTo(result, CV_8U);
+
           cv::threshold(thresh, thresh, 1, 255, cv::THRESH_BINARY);
           cv::Canny(thresh, thresh, 1, 255);
 
@@ -294,10 +289,10 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::
 
           gpuimg_warped.convertTo(gpuimg_warped_s, CV_16S, streamObj);
 
-          mBlender->feed(gpuimg_warped_s, gpu_seam_masks[i], i, streamObj);
+          cuBlender->feed(gpuimg_warped_s, gpu_seam_masks[i], i, streamObj);
     }
 
-    mBlender->blend(stitch, mask_, streamObj);
+    cuBlender->blend(stitch, mask_, streamObj);
 
     cv::cuda::warpPerspective(stitch, temp, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
 

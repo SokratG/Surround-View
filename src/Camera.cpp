@@ -521,14 +521,6 @@ int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& 
 	if (!camsOpenOk)
 		return -1;
 	
-	numBlocks = 0;
-	numThreads = 0;
-
-	cudaDeviceProp cuProp;
-	cudaGetDeviceProperties(&cuProp, 0);
-	numBlocks = cuProp.maxThreadsPerBlock >> cuProp.multiProcessorCount;
-	numThreads = cuProp.maxThreadsPerBlock >> 1;
-
 
 	for (auto& _cudaStream : _cudaStreams){
 	    if (cudaStreamCreate(&_cudaStream) != cudaError::cudaSuccess){
@@ -651,24 +643,17 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 		auto& dataBuffer = _cams[i].buffers[buff.index];
 		auto* cudaBuffer = _cams[i].cuda_out_buffer;
 	
-		gpuConvertUYVY2RGB_async((uchar*) dataBuffer.start, cudaBuffer, frameSize.width, frameSize.height,
-					  numBlocks, numThreads, _cudaStreams[i]);
+		gpuConvertUYVY2RGB_async((uchar*) dataBuffer.start, cudaBuffer, frameSize.width, frameSize.height, _cudaStreams[i]);
 
 		const auto uData = cv::cuda::GpuMat(frameSize, CV_8UC3, cudaBuffer);
 
 		if (_undistort){
 			cv::cuda::remap(uData, frames[i].gpuFrame, undistFrames[i].remapX, undistFrames[i].remapY,
-					cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), cudaStreamObj[i]);	
+					cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), cudaStreamObj[i]);
 			frames[i].gpuFrame = frames[i].gpuFrame(undistFrames[i].roiFrame);
 		}	
 	}
 
-#ifdef NO_COMPILE
-	cudaStreamObj.waitForCompletion();
-
-	if (_cudaStream)
-		cudaStreamSynchronize(_cudaStream);
-#endif
 
 	// enqueue buffer after processing
 	for(size_t i = 0; i < _cams.size(); ++i){
@@ -682,6 +667,14 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 		}
 	}
 
+#ifdef NO_COMPILE
+	for(auto& cds : cudaStreamObj)
+	    cds.waitForCompletion();
+	for(auto& cs : _cudaStreams){
+	    if (_cudaStream)
+		    cudaStreamSynchronize(_cudaStream);
+	}
+#endif
 	return true;
 }
 

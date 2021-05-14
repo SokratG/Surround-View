@@ -7,7 +7,7 @@
 
 typedef unsigned char uchar;
 
-int divUp(int a, int b){
+__host__ inline int divUp(int a, int b){
 	return ((a % b) != 0) ? (a / b + 1) : (a / b);
 }
 
@@ -37,16 +37,6 @@ extern "C" void normalizeUsingWeightMapGpu32F(const cv::cuda::PtrStepf weight, c
     normalizeUsingWeightKernel32F<<<grid, threads>>> (weight, src, width, height);
 }
 
-
-extern "C" void normalizeUsingWeightMapGpu32F_Async(const cv::cuda::PtrStepf weight, cv::cuda::PtrStep<short> src,
-                                              const int width, const int height, cudaStream_t stream_dst)
-{
-    dim3 threads(32, 32);
-    dim3 grid(divUp(width, threads.x), divUp(height, threads.y));
-    normalizeUsingWeightKernel32F<<<grid, threads>>> (weight, src, width, height);
-
-    cudaStreamAttachMemAsync(stream_dst, src, 0 , cudaMemAttachGlobal);
-}
 
 
 // ------------------------------- CUDABlender --------------------------------
@@ -99,15 +89,15 @@ extern "C" void feedCUDA(uchar* img, uchar* mask, uchar* dst, uchar* dst_mask, i
 
 extern "C" void feedCUDA_Async(uchar* img, uchar* mask, uchar* dst, uchar* dst_mask, int dx, int dy, int width, int height, int img_step, int dst_step, int mask_step, int mask_dst_step, cudaStream_t streamimg, cudaStream_t streammask)
 {
-	uint blockSize = 32;	
-	dim3 blockDim(blockSize, blockSize, 1);
-	dim3 gridDim(divUp(width, blockDim.x), divUp(height, blockDim.y), 1);
-	
 
-	feedCUDA_kernel << <gridDim, blockDim >> >(img, mask, dst, dst_mask, dx, dy, width, height, img_step, dst_step, mask_step, mask_dst_step);
+      cudaStreamAttachMemAsync(streamimg, dst, 0 , cudaMemAttachGlobal);
+      cudaStreamAttachMemAsync(streammask, dst_mask, 0 , cudaMemAttachGlobal);
+      uint blockSize = 32;
+      dim3 blockDim(blockSize, blockSize, 1);
+      dim3 gridDim(divUp(width, blockDim.x), divUp(height, blockDim.y), 1);
 
-	cudaStreamAttachMemAsync(streamimg, dst, 0 , cudaMemAttachGlobal);
-	cudaStreamAttachMemAsync(streammask, dst_mask, 0 , cudaMemAttachGlobal);	
+
+      feedCUDA_kernel << <gridDim, blockDim >> >(img, mask, dst, dst_mask, dx, dy, width, height, img_step, dst_step, mask_step, mask_dst_step);
 }
 
 
@@ -145,13 +135,15 @@ extern "C" void weightBlendCUDA_Async(const cv::cuda::PtrStep<short> src, const 
     cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, const cv::Size& img_size,
     int dx, int dy, cudaStream_t stream_dst, cudaStream_t stream_dst_weight)
 {
+      cudaStreamAttachMemAsync(stream_dst, dst, 0 , cudaMemAttachGlobal);
+      cudaStreamAttachMemAsync(stream_dst_weight, dst_weight, 0 , cudaMemAttachGlobal);
+
       dim3 threads(32, 32);
       dim3 grid(divUp(img_size.width, threads.x), divUp(img_size.height, threads.y));
 
       weightBlendCUDA_kernel<<<grid, threads>>>(src, src_weight, dst, dst_weight, img_size.width, img_size.height, dx, dy);
 
-      cudaStreamAttachMemAsync(stream_dst, dst, 0 , cudaMemAttachGlobal);
-      cudaStreamAttachMemAsync(stream_dst_weight, dst_weight, 0 , cudaMemAttachGlobal);
+
 }
 
 
@@ -189,12 +181,12 @@ extern "C" void addSrcWeightGpu32F_Async(const cv::cuda::PtrStep<short> src, con
                         cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, cv::Rect &rc,
                         cudaStream_t stream_dst, cudaStream_t stream_dst_weight)
 {
-     dim3 threads(16, 16);
-     dim3 blocks(divUp(rc.width, threads.x), divUp(rc.height, threads.y));
-     addSrcWeightKernel32F<<<blocks, threads>>>(src, src_weight, dst, dst_weight, rc.height, rc.width);
+    cudaStreamAttachMemAsync(stream_dst, dst, 0 , cudaMemAttachGlobal);
+    cudaStreamAttachMemAsync(stream_dst_weight, dst_weight, 0 , cudaMemAttachGlobal);
 
-     cudaStreamAttachMemAsync(stream_dst, dst, 0 , cudaMemAttachGlobal);
-     cudaStreamAttachMemAsync(stream_dst_weight, dst_weight, 0 , cudaMemAttachGlobal);
+    dim3 threads(16, 16);
+    dim3 blocks(divUp(rc.width, threads.x), divUp(rc.height, threads.y));
+    addSrcWeightKernel32F<<<blocks, threads>>>(src, src_weight, dst, dst_weight, rc.height, rc.width);
 }
 
 

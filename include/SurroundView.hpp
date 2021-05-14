@@ -22,7 +22,7 @@ private:
 	bool isInit = false;
 	size_t imgs_num = 0;
 	double warped_image_scale = 1.0;
-        double sharpness = 2.5f;
+        int numbands = 4;
 	std::vector<cv::Mat> Ks_f;
         std::vector<cv::Mat> R;
 	std::vector<cv::cuda::GpuMat> gpu_seam_masks;
@@ -35,8 +35,7 @@ private:
         cv::Mat transformM;
         // --------------
 	cv::cuda::Stream streamObj;
-        std::shared_ptr<CUDAFeatherBlender> cuBlender;
-        std::shared_ptr<CUDAMultiBandBlender> mBlender;
+        std::shared_ptr<CUDAMultiBandBlender> cuBlender;
 
 private:
         void save_warpptr(const std::string& warpfile, const cv::Size& res_size,
@@ -48,7 +47,7 @@ public:
         bool getInit() const {return isInit;}
         cv::Size getResSize() const {return resSize;}
 public:
-        SurroundView() : cuBlender(nullptr), mBlender(nullptr) {}
+        SurroundView() : cuBlender(nullptr) {}
         bool init(const std::vector<cv::cuda::GpuMat>& imgs);
         bool initFromFile(const std::string& dirpath, const std::vector<cv::cuda::GpuMat>& imgs, const bool use_filewarp_pts=false);
         bool stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::GpuMat& blend_img);

@@ -145,8 +145,6 @@ public:
 private:
         std::array<cudaStream_t, 4> _cudaStreams {{NULL}};
         std::array<cv::cuda::Stream, 4> cudaStreamObj{{cv::cuda::Stream::Null()}};
-        int numBlocks, numThreads;
-        // cudaStream_t _cudaStream = NULL;
 };
 
 //bool stitch_frames(std::array<SyncedCameraSource::Frame, 4>& in, SyncedCameraSource::Frame& out, bool isMove=false);
