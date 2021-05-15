@@ -2,7 +2,6 @@
 #include "AutoCalib.hpp"
 #include "SeamDetection.hpp"
 #include "SurroundView.hpp"
-#include <opencv2/stitching/detail/blenders.hpp>
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudawarping.hpp>
@@ -192,7 +191,7 @@ bool SurroundView::getDataFromFile(const std::string& dirpath, const bool use_fi
     return true;
 }
 
-
+#include <opencv2/highgui.hpp>
 bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 {
           cv::cuda::GpuMat gpu_result, warp_s, warp_img;
@@ -236,14 +235,16 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
               for (const auto& pt : pcnt){
                   if (bl.x >= pt.x)
                     bl = pt;
-                  if (br.x < pt.x)
+                  if (br.x <= pt.x)
                     br = pt;
                   if (pt.x < xl_constrain && tl.x > pt.x && tl.y > pt.y)
                     tl = pt;
-                  if (pt.x > (width_ - xr_constrain) && tr.x > pt.x && tr.y > pt.y)
+                  if (pt.x > (width_ - xr_constrain) && tr.x >= pt.x && tr.y > pt.y)
                     tr = pt;
               }
+
           }       
+
 
           resSize = result.size();
 

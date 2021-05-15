@@ -1,5 +1,5 @@
-#include "Camera.hpp"
 #include "SurroundView.hpp"
+#include "Camera.hpp"
 #include <csignal>
 #include "display.hpp"
 #include <omp.h>
@@ -49,8 +49,9 @@ int CameraCycle()
 
         //cv::VideoWriter invid("stream.avi", cv::VideoWriter::fourcc('D', 'I', 'V', 'X'), 20, cameraSize);
 	
-	cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
-	cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
+	//cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
+	//cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
+
 
 	SurroundView sv;
 	
@@ -63,7 +64,7 @@ int CameraCycle()
 			continue;
 		}	
 //#define YES
-//#define GL_YES
+#define GL_YES
 #ifdef YES
 		cv::imshow(win1, frames[0].gpuFrame);
 		cv::imshow(win2, frames[1].gpuFrame);
@@ -84,7 +85,7 @@ int CameraCycle()
 		    cv::cuda::GpuMat res;
 
 		    sv.stitch(datas, res);
-		    cv::imshow(win1, res);
+		    //cv::imshow(win1, res);
 #ifdef GL_YES
 		    bool okRender = dp->render(res);
 		    if (!okRender)
@@ -94,9 +95,10 @@ int CameraCycle()
 #endif
 
 
+#ifndef GL_YES
 		if (cv::waitKey(1) > 0)
 			break;
-
+#endif
 		const auto now = std::chrono::high_resolution_clock::now();
 		const auto dt = now - lastTick;
 		lastTick = now;

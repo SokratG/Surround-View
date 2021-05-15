@@ -2,11 +2,14 @@
 #include "Bowl.hpp"
 #include <opencv2/core/opengl.hpp>
 
+#include <Model.hpp>
+
+
+
+
 #include <cuda_gl_interop.h>
 
 static void renderQuad();
-
-constexpr auto bolw_size = 3.f * 3.14159265359f / 2.f;
 
 void View::render(const Camera& cam, const cv::cuda::GpuMat& frame)
 {
@@ -15,23 +18,8 @@ void View::render(const Camera& cam, const cv::cuda::GpuMat& frame)
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    drawSurroundView(cam, frame);
 
-    glm::mat4 model(1.f);
-    //model = glm::scale(model, glm::vec3(2.f, 2.f, 2.f));
-    auto view = cam.getView();
-    auto projection = glm::perspective(glm::radians(cam.getCamZoom()), aspect_ratio, 0.1f, 100.f);
-
-    SVshader.useProgramm();
-    SVshader.setMat4("model", model);
-    SVshader.setMat4("view", view);
-    SVshader.setMat4("projection", projection);
-    texturePrepare(frame);
-
-    glBindVertexArray(bowlVAO);
-
-    texture.bind();
-
-    glDrawElements(GL_TRIANGLE_STRIP, indexPartBowl, GL_UNSIGNED_INT, 0);
 
     // unbound
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -50,23 +38,30 @@ bool View::init(const int32 width, const int32 height)
     aspect_ratio = static_cast<float>(width) / height;
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0); // bind default framebuffer
+
+    modelShader.initShader("shaders/modelshadervert.glsl", "shaders/modelshaderfrag.glsl");
     SVshader.initShader("shaders/svvert.glsl", "shaders/svfrag.glsl");
 
     glGenVertexArrays(1, &bowlVAO);
     glGenBuffers(1, &bowlVBO);
     glGenBuffers(1, &bowlEBO);
 
-    auto inner_radius = 0.3f;
-    auto radius = 0.4f;
-    auto a = 0.4f;
-    auto b = 0.4f;
-    auto c = 0.1f;
+
+    /* Bowl parameter */
+    constexpr auto inner_radius = 0.3f;
+    constexpr auto radius = 0.4f;
+    constexpr auto hole_radius = 0.07f;
+    constexpr auto interpolated_vertices_num = 1000.f;
+    constexpr auto a = 0.4f;
+    constexpr auto b = 0.4f;
+    constexpr auto c = 0.15f;
 
     Bowl bowl(inner_radius, radius, a, b, c);
     std::vector<float> data;
     std::vector<uint> idxs;
     //bool isgen = bowl.generate_mesh_uv(80.f, data, idxs);
-    bool isgen = bowl.generate_mesh_uv_hole(60.f, 0.02f, data, idxs);
+    bool isgen = bowl.generate_mesh_uv_hole(interpolated_vertices_num, hole_radius, data, idxs);
+
     if (!isgen)
         return false;
 
@@ -105,7 +100,41 @@ void View::texturePrepare(const cv::cuda::GpuMat& frame)
 
 
 
+void View::drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame)
+{
+    glm::mat4 model(1.f);
+    //model = glm::scale(model, glm::vec3(2.f, 2.f, 2.f));
+    auto view = cam.getView();
+    auto projection = glm::perspective(glm::radians(cam.getCamZoom()), aspect_ratio, 0.1f, 100.f);
 
+    SVshader.useProgramm();
+    SVshader.setMat4("model", model);
+    SVshader.setMat4("view", view);
+    SVshader.setMat4("projection", projection);
+    texturePrepare(frame);
+
+    glBindVertexArray(bowlVAO);
+
+    texture.bind();
+
+    glDrawElements(GL_TRIANGLE_STRIP, indexPartBowl, GL_UNSIGNED_INT, 0);
+}
+
+void View::drawModel(const Camera& cam)
+{
+    glm::mat4 model(1.f);
+    auto view = cam.getView();
+    auto projection = glm::perspective(glm::radians(cam.getCamZoom()), aspect_ratio, 0.1f, 100.f);
+
+    modelShader.useProgramm();
+    modelShader.setMat4("model", model);
+    modelShader.setMat4("view", view);
+    modelShader.setMat4("projection", projection);
+
+
+
+
+}
 
 
 

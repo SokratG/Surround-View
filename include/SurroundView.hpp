@@ -1,3 +1,4 @@
+#pragma once
 #include <string>
 #include <opencv2/stitching/detail/camera.hpp>
 #include <opencv2/cudaimgproc.hpp>

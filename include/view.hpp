@@ -1,4 +1,5 @@
-#include "glm.hpp"
+#pragma once
+#include <glm.hpp>
 #include <opencv2/opencv.hpp>
 #include <GLES3/gl32.h>
 #include <EGL/egl.h>
@@ -33,10 +34,14 @@ private:
         cv::ogl::Texture2D texture;
         std::shared_ptr<Camera> cam;
         Shader SVshader;
+        Shader modelShader;
         bool isInit = false;
         bool texReady;
+
 protected:
         void texturePrepare(const cv::cuda::GpuMat& frame);
+        void drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame);
+        void drawModel(const Camera& cam);
 #ifdef NO
         void glew_init(){
             glewExperimental = GL_TRUE;

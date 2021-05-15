@@ -1,9 +1,9 @@
+#pragma once
 #include <opencv2/features2d.hpp>
 #include <opencv2/stitching/detail/autocalib.hpp>
 
 #include <opencv2/stitching/detail/timelapsers.hpp>
-#include <opencv2/stitching/detail/matchers.hpp>
-#include <opencv2/stitching/detail/camera.hpp>
+
 
 using uchar = unsigned char;
 

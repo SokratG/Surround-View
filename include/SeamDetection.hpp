@@ -24,8 +24,13 @@ private:
     double work_scale = 1.0;
     size_t imgs_num = 0;
     bool isInit = false;
+private:
+    /* find seam between first and last frames */
+    void fl_seam_detect(const std::vector<cv::UMat>& imgs_warped_f, std::vector<cv::UMat>& masks_warped_, int idxmax, int idxmin);
 protected:
-    bool warpedImage(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R);
+    bool warpedImage(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R,
+                     std::vector<cv::UMat>& imgs_warped, std::vector<cv::UMat>& masks_warped);
+    bool seamDetect(const std::vector<cv::UMat>& imgs_warped, std::vector<cv::UMat>& masks_warped);
 public:
     bool getInit() const {return isInit;}
     std::vector<cv::Point> getCorners() const {return corners;}
