@@ -7,7 +7,7 @@
 
 
 using int32 = int32_t;
-Camera cam(vec3(0.f, 0.f, 1.f), vec3(0.f, 1.f, 0.f));
+Camera cam(vec3(0.f, 1.f, 1.f), vec3(0.f, 1.f, 0.f));
 
 float lastX = 1280 / 2.f; // last x pos cursor
 float lastY = 720 / 2.f; // last y pos cursor
@@ -47,19 +47,21 @@ static void processInput(GLFWwindow* window)
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
                 glfwSetWindowShouldClose(window, true);
         }
+
         const float cameraSpeed = 1.0f * deltaTime; //2.5f
-        glm::vec3 camPos = cam.getCamPos();
+        constexpr auto const_speed = 0.5f;
+
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-                cam.processKeyboard(Camera_Movement::FORWARD, deltaTime);
+                cam.processKeyboard(Camera_Movement::FORWARD, const_speed);
         }
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-                cam.processKeyboard(Camera_Movement::BACKWARD, deltaTime);
+                cam.processKeyboard(Camera_Movement::BACKWARD, const_speed);
         }
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-                cam.processKeyboard(Camera_Movement::LEFT, deltaTime);
+                cam.processKeyboard(Camera_Movement::LEFT, const_speed);
         }
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-                cam.processKeyboard(Camera_Movement::RIGHT, deltaTime);
+                cam.processKeyboard(Camera_Movement::RIGHT, const_speed);
         }
 }
 
@@ -69,6 +71,7 @@ class DisplayView
 private:
 	GLFWwindow* window;
         int32 width, height;
+        float aspect_ratio;
         std::shared_ptr<View> disp_view;
         bool isInit;
 public:
@@ -85,6 +88,7 @@ public:
                     return isInit;
             this->width = wnd_width;
             this->height = wnd_height;
+            aspect_ratio = static_cast<float>(wnd_width) / wnd_height;
             disp_view = scene_view;
 
             /*
@@ -106,9 +110,9 @@ public:
             glfwMakeContextCurrent(window);
 
             if (!disp_view->getInit())
-                disp_view->init(tex_width, tex_height);
+                disp_view->init(tex_width, tex_height, aspect_ratio);
 
-            glDisable(GL_DEPTH_TEST);
+            glEnable(GL_DEPTH_TEST);
             //glDepthFunc(GL_LEQUAL);
 
             glViewport(0, 0, width, height);

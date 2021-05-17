@@ -4,9 +4,6 @@
 
 #include <Model.hpp>
 
-
-
-
 #include <cuda_gl_interop.h>
 
 static void renderQuad();
@@ -15,11 +12,12 @@ void View::render(const Camera& cam, const cv::cuda::GpuMat& frame)
 {
     // render command
     // ...
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     drawSurroundView(cam, frame);
 
+    drawModel(cam);
 
     // unbound
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -27,15 +25,16 @@ void View::render(const Camera& cam, const cv::cuda::GpuMat& frame)
 }
 
 
-bool View::init(const int32 width, const int32 height)
+bool View::init(const int32 width, const int32 height, const float aspect_ratio_)
 {
     if (isInit)
             return isInit;
 
-
+    /* width and height texture frame from gpuMat */
     this->width = width;
     this->height = height;
-    aspect_ratio = static_cast<float>(width) / height;
+
+    aspect_ratio = aspect_ratio_;
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0); // bind default framebuffer
 
@@ -59,12 +58,13 @@ bool View::init(const int32 width, const int32 height)
     Bowl bowl(inner_radius, radius, a, b, c);
     std::vector<float> data;
     std::vector<uint> idxs;
-    //bool isgen = bowl.generate_mesh_uv(80.f, data, idxs);
     bool isgen = bowl.generate_mesh_uv_hole(interpolated_vertices_num, hole_radius, data, idxs);
 
     if (!isgen)
         return false;
 
+
+    test.InitModel("models/Dodge Challenger SRT Hellcat 2015.obj");
 
     indexPartBowl= idxs.size();
 
@@ -103,9 +103,12 @@ void View::texturePrepare(const cv::cuda::GpuMat& frame)
 void View::drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame)
 {
     glm::mat4 model(1.f);
-    //model = glm::scale(model, glm::vec3(2.f, 2.f, 2.f));
     auto view = cam.getView();
     auto projection = glm::perspective(glm::radians(cam.getCamZoom()), aspect_ratio, 0.1f, 100.f);
+
+
+    model = glm::scale(model, glm::vec3(5.f, 5.f, 5.f));
+
 
     SVshader.useProgramm();
     SVshader.setMat4("model", model);
@@ -126,13 +129,15 @@ void View::drawModel(const Camera& cam)
     auto view = cam.getView();
     auto projection = glm::perspective(glm::radians(cam.getCamZoom()), aspect_ratio, 0.1f, 100.f);
 
+    model = glm::translate(model, glm::vec3(0.f, 0.37f, 0.f));
+    model = glm::rotate(model, glm::radians(-90.f), glm::vec3(1.f, 0.f, 0.f));
+    model = glm::scale(model, glm::vec3(0.0012f));
+
     modelShader.useProgramm();
     modelShader.setMat4("model", model);
     modelShader.setMat4("view", view);
     modelShader.setMat4("projection", projection);
-
-
-
+    test.Draw(modelShader);
 
 }
 

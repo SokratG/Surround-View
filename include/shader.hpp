@@ -169,7 +169,7 @@ protected:
             glGetShaderiv(shader, GL_DELETE_STATUS, &deleted);
             if (!deleted) {
                 shaderDelErrors(shader);
-                exit(EXIT_FAILURE);
+                /*exit(EXIT_FAILURE)*/;
             }
 	}
 	
@@ -207,7 +207,7 @@ private:
             glGetShaderiv(shaderprogram, GL_DELETE_STATUS, &deleted);
             if (!deleted) {
                 std::cerr << "Error delete shader program # " << shaderprogram << "\n";
-                exit(EXIT_FAILURE);
+                /*exit(EXIT_FAILURE)*/;
             }
 	}
 

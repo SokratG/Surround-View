@@ -8,7 +8,7 @@
 
 #include "virtcam.hpp"
 #include "shader.hpp"
-
+#include "Model.hpp"
 
 #include <vector>
 #include <stdint.h>
@@ -35,6 +35,7 @@ private:
         std::shared_ptr<Camera> cam;
         Shader SVshader;
         Shader modelShader;
+        Model test;
         bool isInit = false;
         bool texReady;
 
@@ -71,7 +72,7 @@ public:
 	}
 	
 
-        bool init(const int32 width, const int32 height);
+        bool init(const int32 width, const int32 height, const float aspect_ratio_);
         void render(const Camera& cam, const cv::cuda::GpuMat& frame);
 };
 
