@@ -13,7 +13,7 @@
 class Shader
 {
 public:
-	Shader() = default;
+        Shader() = default;
 
 	~Shader() {
             if (isInit) {
@@ -26,15 +26,16 @@ public:
                     return false;
 
             vertexshader = initShaders(GL_VERTEX_SHADER, vertexfile);
+
             fragmentshader = initShaders(GL_FRAGMENT_SHADER, fragmentfile);
 
             if (geometryfile != nullptr)
                     geometryshader = initShaders(GL_GEOMETRY_SHADER, geometryfile);
 
             if (vertexshader != 0 && fragmentshader != 0)
-                    shaderprogram = initProgram();
+                shaderprogram = initProgram();
             else
-                    return false;
+                return false;
 
             isInit = true;
 

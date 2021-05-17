@@ -15,6 +15,20 @@ void sig_handler(int signo)
 }
 
 
+void addCar(std::shared_ptr<View>& view_)
+{
+    glm::mat4 transform_car(1.f);
+    transform_car = glm::translate(transform_car, glm::vec3(0.f, 0.37f, 0.f));
+    transform_car = glm::rotate(transform_car, glm::radians(-90.f), glm::vec3(1.f, 0.f, 0.f));
+    transform_car = glm::scale(transform_car, glm::vec3(0.0012f));
+
+    bool ok = view_->addModel("models/Dodge Challenger SRT Hellcat 2015.obj", "shaders/modelshadervert.glsl",
+                    "shaders/modelshaderfrag.glsl", transform_car);
+    if (!ok)
+      std::cerr << "bad add model\n";
+}
+
+
 int CameraCycle()
 {
 	cv::setNumThreads(4);
@@ -77,6 +91,7 @@ int CameraCycle()
 			if (init){
 			    const auto tex_size = sv.getResSize();
 			    dp->init(1280, 720, tex_size.width, tex_size.height, view_scene);
+			    addCar(view_scene);
 			}
 #endif
 		}

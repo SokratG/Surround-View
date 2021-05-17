@@ -38,7 +38,6 @@ bool View::init(const int32 width, const int32 height, const float aspect_ratio_
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0); // bind default framebuffer
 
-    modelShader.initShader("shaders/modelshadervert.glsl", "shaders/modelshaderfrag.glsl");
     SVshader.initShader("shaders/svvert.glsl", "shaders/svfrag.glsl");
 
     glGenVertexArrays(1, &bowlVAO);
@@ -63,8 +62,6 @@ bool View::init(const int32 width, const int32 height, const float aspect_ratio_
     if (!isgen)
         return false;
 
-
-    test.InitModel("models/Dodge Challenger SRT Hellcat 2015.obj");
 
     indexPartBowl= idxs.size();
 
@@ -129,18 +126,43 @@ void View::drawModel(const Camera& cam)
     auto view = cam.getView();
     auto projection = glm::perspective(glm::radians(cam.getCamZoom()), aspect_ratio, 0.1f, 100.f);
 
-    model = glm::translate(model, glm::vec3(0.f, 0.37f, 0.f));
-    model = glm::rotate(model, glm::radians(-90.f), glm::vec3(1.f, 0.f, 0.f));
-    model = glm::scale(model, glm::vec3(0.0012f));
-
-    modelShader.useProgramm();
-    modelShader.setMat4("model", model);
-    modelShader.setMat4("view", view);
-    modelShader.setMat4("projection", projection);
-    test.Draw(modelShader);
+    for(auto i = 0; i < models.size(); ++i){
+        model = modeltranformations[i];
+        modelshaders[i]->useProgramm();
+        modelshaders[i]->setMat4("model", model);
+        modelshaders[i]->setMat4("view", view);
+        modelshaders[i]->setMat4("projection", projection);
+        models[i].Draw(*modelshaders[i]);
+    }
 
 }
 
+
+bool View::addModel(const std::string& pathmodel, const std::string& pathvertshader,
+              const std::string& pathfragshader, const glm::mat4& mat_transform)
+{
+    bool res = pathmodel.empty() || pathvertshader.empty() || pathfragshader.empty();
+    if (res)
+      return false;
+
+    Model m(pathmodel);
+    res = m.getModelInit();
+    if (!res)
+      return false;
+
+
+    modelshaders.emplace_back(std::make_shared<Shader>());
+    auto last_idx = modelshaders.size() - 1;
+    res = modelshaders[last_idx]->initShader(pathvertshader.c_str(), pathfragshader.c_str());
+    if (!res)
+      return false;
+
+
+    models.emplace_back(std::move(m));
+    modeltranformations.emplace_back(mat_transform);
+
+    return true;
+}
 
 
 

@@ -34,8 +34,6 @@ private:
         cv::ogl::Texture2D texture;
         std::shared_ptr<Camera> cam;
         Shader SVshader;
-        Shader modelShader;
-        Model test;
         bool isInit = false;
         bool texReady;
 
@@ -55,6 +53,8 @@ protected:
 #endif
 public:  
        bool getInit() const{return isInit;}
+       bool addModel(const std::string& pathmodel, const std::string& pathvertshader,
+                     const std::string& pathfragshader, const glm::mat4& mat_transform);
 
 public:
         View() :
@@ -74,6 +74,10 @@ public:
 
         bool init(const int32 width, const int32 height, const float aspect_ratio_);
         void render(const Camera& cam, const cv::cuda::GpuMat& frame);
+private:
+        std::vector<Model> models;
+        std::vector<std::shared_ptr<Shader>> modelshaders;
+        std::vector<glm::mat4> modeltranformations;
 };
 
 
