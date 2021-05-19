@@ -66,7 +66,6 @@ int CameraCycle()
 	//cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 	//cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 
-
 	SurroundView sv;
 	
 	auto lastTick = std::chrono::high_resolution_clock::now();

@@ -12,7 +12,7 @@
 #include <omp.h>
 
 static auto isstart = false;
-
+static constexpr auto padding_warp = 20;
 
 bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	
@@ -179,8 +179,6 @@ bool SurroundView::getDataFromFile(const std::string& dirpath, const bool use_fi
           const auto width_ = resSize.width;
           const auto height_ = resSize.height;
 
-          /* crop last and first camera image on seam */
-          resSize.width = resSize.width - ((resSize.width - tr.x) >> 1);
 
           std::vector<cv::Point_<float>> src {tl, tr, bl, br};
           std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0), cv::Point(0, height_), cv::Point(width_, height_)};
@@ -191,7 +189,7 @@ bool SurroundView::getDataFromFile(const std::string& dirpath, const bool use_fi
     return true;
 }
 
-#include <opencv2/highgui.hpp>
+
 bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 {
           cv::cuda::GpuMat gpu_result, warp_s, warp_img;
@@ -208,52 +206,81 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           gpu_result.download(result);
           warp_img.download(thresh);
 
-          // result.convertTo(result, CV_8U);
+          result.convertTo(result, CV_8U);
+
 
           cv::threshold(thresh, thresh, 1, 255, cv::THRESH_BINARY);
-          cv::Canny(thresh, thresh, 1, 255);
-
-          cv::morphologyEx(thresh, thresh, cv::MORPH_DILATE, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)));
-          cv::morphologyEx(thresh, thresh, cv::MORPH_CLOSE, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5)));
 
           std::vector<std::vector<cv::Point>> cnts;
 
           cv::findContours(thresh, cnts, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
 
+
           auto width_ = result.cols;
           auto height_ = result.rows;
-          /* constrain set manual */
-          const auto half_h = height_ >> 1;
-          const auto half_w = width_ >> 1;
-          cv::Point tl(half_w, half_h);
-          cv::Point tr(width_, height_);
+
+          cv::Point tl(0, 0);
+          cv::Point tr(0, 0);
           cv::Point bl = cnts[0][0];
           cv::Point br = cnts[0][0];
-          const auto xl_constrain = width_ * 0.03;
-          const auto xr_constrain = width_ * 0.06;
+          /* constrain for right corner set manual -> start to find at middle of image*/
+          const auto xr_constrain = result.cols - (sizes[sizes.size()- 1].width >> 1);
+          /* find bottom-left and bottorm-right corners (or if another warping tl and tr)*/
+          auto idx_tl = 0, idx_tr = 0, tot_idx = 0;
+
           for(const auto& pcnt : cnts){
               for (const auto& pt : pcnt){
-                  if (bl.x >= pt.x)
+                  if (bl.x > pt.x){
                     bl = pt;
-                  if (br.x <= pt.x)
-                    br = pt;
-                  if (pt.x < xl_constrain && tl.x > pt.x && tl.y > pt.y)
-                    tl = pt;
-                  if (pt.x > (width_ - xr_constrain) && tr.x >= pt.x && tr.y > pt.y)
-                    tr = pt;
+                    idx_tl = tot_idx;
+                  }
+
+                  if (br.x < pt.x)
+                    br = pt;  
+
+                  tot_idx += 1;
+                  if (pt.x == xr_constrain)
+                    idx_tr = tot_idx;
               }
+          }
 
-          }       
+          /* find top-left*/
+          for(auto i = idx_tl; i >= 0; --i){
+              const auto& pt = cnts[0][i + 1];
+              const auto& prev_pt = cnts[0][i];
+              auto dy = prev_pt.y - pt.y;
+              if (bl.y >= pt.y && dy == 0){
+                tl = pt;
+                break;
+              }
+          }
 
+          /* find top-right*/
+          for(auto i = idx_tr; i >= 0; --i){
+              const auto& pt = cnts[0][i];
+              const auto& next_pt = cnts[0][i - 1];
+              auto dy = next_pt.y - pt.y;
+              // find corner point on seam of last frame
+              auto dx = cnts[0][i - 2].x - next_pt.x;
+              if (dy == 0 && dx == 0){
+                tr = pt;
+                break;
+              }
+          }
 
           resSize = result.size();
+          /* add offset of coordinate corner points due to seam last frame */
+          tr.x -= (padding_warp >> 2);
+          br.x -= padding_warp; br.y += (padding_warp >> 1);
 
           save_warpptr("corner_warppts.yaml", resSize, tl, tr, bl, br);
 
-          resSize.width = resSize.width - ((resSize.width - tr.x) >> 1);
+
           std::vector<cv::Point_<float>> src {tl, tr, bl, br};
-          std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0), cv::Point(0, height_), cv::Point(width_, height_)};
+          std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0),
+                                              cv::Point(0, height_), cv::Point(width_, height_)};
           transformM = cv::getPerspectiveTransform(src, dst);
+          cv::warpPerspective(result, result, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT);
 
           return true;
 }

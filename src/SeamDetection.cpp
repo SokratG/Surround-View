@@ -9,7 +9,7 @@
 
 #include <iostream>
 
-
+#define EXPERIMENTAL_TEST
 
 bool SeamDetector::init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R)
 {
@@ -144,44 +144,88 @@ bool SeamDetector::seamDetect(const std::vector<cv::UMat>& imgs_warped, std::vec
 
 
 
-
 void SeamDetector::fl_seam_detect(const std::vector<cv::UMat>& imgs_warped_f, std::vector<cv::UMat>& masks_warped_, int idxmax, int idxmin)
 {
-      cv::Ptr<cv::detail::SeamFinder> seam_finder = cv::detail::SeamFinder::createDefault(cv::detail::SeamFinder::DP_SEAM);
+      cv::Ptr<cv::detail::SeamFinder> seam_finder = cv::detail::SeamFinder::createDefault(cv::detail::SeamFinder::VORONOI_SEAM);
 
-      std::vector<cv::UMat> wimg{imgs_warped_f[idxmax], imgs_warped_f[idxmin]};
+      std::vector<cv::UMat> wimg(2);
+      imgs_warped_f[idxmax].copyTo(wimg[0]); imgs_warped_f[idxmin].copyTo(wimg[1]);
       std::vector<cv::UMat> mimg(2);
-      masks_warped_[idxmax].copyTo(mimg[0]);
-      masks_warped_[idxmin].copyTo(mimg[1]);
+      masks_warped_[idxmax].copyTo(mimg[0]); masks_warped_[idxmin].copyTo(mimg[1]);
       std::vector<cv::Point> cor{corners[idxmax], corners[idxmin]};
 
 
-      std::vector<cv::Point> last_pts(4);
-      std::vector<cv::Point> first_pts(4);
-
       /**
         Algorithm:
-        1. Threshold images
+        1. Threshold images(use mask)
         2. Find contours both thresh. images
-        3. Find tl, bl, tr, br points both thresh. images
+        3. Find tl, bl -> first image;  tr, br -> last image
         4. Warp perspective to rectangle or trapezoid both images and masks
         5. Seam find between this warped images
-        6. Unwarp masks to previous points
+        6. Unwarp mask to previous points
         7. Bitwise-and mask with mask with another seam only for last mask
       */
+      /* for last image */
+      std::vector<std::vector<cv::Point>> cnts;
+      cv::findContours(mimg[0], cnts, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
+      cv::Point br, tr;
+      const auto half_w = mimg[0].cols >> 1;
+      for(auto i = 0; i < cnts[0].size(); ++i){
+          const auto& pt = cnts[0][i];
+          if (br.x <= pt.x)
+            br = pt;
+      }
+
+      for(auto i = 0; i < cnts[0].size() - 1; ++i){
+          const auto& pt = cnts[0][i];
+          const auto& next_pt = cnts[0][i + 1];
+          auto dy = next_pt.y - pt.y;
+          if (pt.x > half_w && br.y > pt.y && dy == 0){
+            tr = pt;
+            break;
+          }
+      }
+      std::vector<cv::Point_<float>> src_pts{cv::Point(0, 0), cv::Point(0, mimg[0].rows), tr, br};
+      std::vector<cv::Point_<float>> def_pts{cv::Point(0, 0), cv::Point(0, mimg[0].rows), cv::Point(mimg[0].cols, 0), cv::Point(tr.x, br.y)};
+      auto transformM = cv::getPerspectiveTransform(src_pts, def_pts);
+      auto inv_transformM = cv::getPerspectiveTransform(def_pts, src_pts);
+      cv::warpPerspective(wimg[0], wimg[0], transformM, wimg[0].size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+      cv::warpPerspective(mimg[0], mimg[0], transformM, mimg[0].size(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
+
+
+
+      /* for first image */
+      cv::findContours(mimg[1], cnts, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
+      cv::Point bl, tl;
+      for(auto i = 0; i < cnts[0].size(); ++i){
+          const auto& pt = cnts[0][i];
+          if (bl.x >= pt.x)
+            bl = pt;
+      }
+      for(auto i = cnts[0].size() - 2; i >= 0; --i){
+          const auto& pt = cnts[0][i + 1];
+          const auto& prev_pt = cnts[0][i];
+          auto dy = prev_pt.y - pt.y;
+          if (pt.x < half_w && bl.y > pt.y && dy == 0){
+            tl = pt;
+            break;
+          }
+      }
+
+      src_pts = std::vector<cv::Point_<float>>{tl, bl, cv::Point(mimg[1].cols, 0), cv::Point(mimg[1].cols, mimg[1].rows)};
+      def_pts =  std::vector<cv::Point_<float>>{cv::Point(0, 0), cv::Point(tl.x, bl.y), cv::Point(mimg[1].cols, 0), cv::Point(mimg[1].cols, mimg[1].rows)};
+      transformM = cv::getPerspectiveTransform(src_pts, def_pts);
+      cv::warpPerspective(wimg[1], wimg[1], transformM, wimg[1].size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+      cv::warpPerspective(mimg[1], mimg[1], transformM, mimg[1].size(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
 
 
       /* compute new overlap ROI */
-      cor[1].x = cv::abs(corners[idxmin].x) - cv::abs(cv::abs(corners[idxmax].x) - sizes[idxmax].width);
-
+      cor[1].x = cv::abs(corners[idxmin].x) - (sizes[idxmax].width / 3);
+      cor[0].y = cor[1].y = 0;
       seam_finder->find(wimg, cor, mimg);
+      cv::warpPerspective(mimg[0], mimg[0], inv_transformM, mimg[0].size(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
 
       cv::bitwise_and(masks_warped_[idxmax], mimg[0], masks_warped_[idxmax]);
-
-      cv::Mat temp, mtemp;
-      wimg[0].convertTo(temp, CV_8U);
-      cv::bitwise_and(temp, temp, mtemp, mimg[0]);
-      // show result...
 }
 
 
