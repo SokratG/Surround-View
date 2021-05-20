@@ -18,6 +18,7 @@ constexpr static float default_center[3]{0.f}; // for default value pass to cons
 class Bowl
 {
 private:
+    constexpr static float eps_uv = 1e-5f;
     constexpr static float PI = 3.14159265359f;
     constexpr static auto epsilon = std::numeric_limits<float>::epsilon();
     constexpr static int32 _num_vertices = 3; // x, y, z
@@ -119,7 +120,7 @@ protected:
                     prepare grid mesh in polar coordinate with r - radius and theta - angle
             */
             // texture coordinates generate (u, v) [0, 1]
-            std::vector<float> texture_u = meshgen::linspace(0.f, 1.f, max_size_vert);
+            std::vector<float> texture_u = meshgen::linspace(0.f, (1.f + eps_uv), max_size_vert);
             auto texture_v = texture_u;
 
             auto r = meshgen::linspace(0.0f, rad, max_size_vert); // min_size = 0.f, max_size = 100.f,
@@ -291,6 +292,7 @@ private:
 class PartitionBowl
 {
 private:
+    constexpr static float eps_uv = 1e-5f;
     typedef std::tuple< meshgen::mesh_grid<float, 0, 2>, meshgen::mesh_grid<float, 1, 2>> grid_type;
     constexpr static float PI = 3.14159265359f;
     constexpr static auto epsilon = std::numeric_limits<float>::epsilon();
@@ -353,7 +355,7 @@ protected:
                 prepare grid mesh
         */
         // texture coordinates generate (u, v) [0, 1]
-        std::vector<float> texture_u = meshgen::linspace(0.f, 1.f, max_size_vert);
+        std::vector<float> texture_u = meshgen::linspace(0.f, (1.f + eps_uv), max_size_vert);
         auto texture_v = texture_u;
 
         std::vector<grid_type> mesh_pairs;

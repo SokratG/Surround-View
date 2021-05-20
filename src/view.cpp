@@ -15,9 +15,15 @@ void View::render(const Camera& cam, const cv::cuda::GpuMat& frame)
     glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     drawSurroundView(cam, frame);
 
     drawModel(cam);
+
+    glDisable(GL_BLEND);
 
     // unbound
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -49,7 +55,7 @@ bool View::init(const int32 width, const int32 height, const float aspect_ratio_
     constexpr auto inner_radius = 0.3f;
     constexpr auto radius = 0.4f;
     constexpr auto hole_radius = 0.07f;
-    constexpr auto interpolated_vertices_num = 1000.f;
+    constexpr auto interpolated_vertices_num = 750.f;
     constexpr auto a = 0.4f;
     constexpr auto b = 0.4f;
     constexpr auto c = 0.15f;
@@ -115,7 +121,7 @@ void View::drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame)
 
     glBindVertexArray(bowlVAO);
 
-    texture.bind();
+    texture.bind();   
 
     glDrawElements(GL_TRIANGLE_STRIP, indexPartBowl, GL_UNSIGNED_INT, 0);
 }

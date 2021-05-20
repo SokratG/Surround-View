@@ -18,10 +18,9 @@ uniform sampler2D texture_diffuse1;
 highp vec4 colorModel()
 {
     // TODO - add light and material computation
-    highp vec4 red_color = vec4(0.5f, 0.0f, 0.f, 1.f);
+    highp vec4 red_color = vec4(0.5f, 0.f, 0.f, 1.f);
     return red_color * vec4((Ka + Kd + Ks), 1.f);
 }
-
 
 void main()
 {  
