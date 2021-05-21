@@ -508,7 +508,7 @@ static cv::Point detectCornerCam(const cv::Size& src_size, const cv::Mat& xmap, 
 
 
 
-int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& undistSize, const bool useUndist)
+int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& calibSize, const cv::Size& undistSize, const bool useUndist)
 {
 	bool camsOpenOk = true;
 	for (auto& cam : _cams){
@@ -537,7 +537,7 @@ int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& 
 				LOG_ERROR("Invalid input path with parameter...");
 				return -1;
 			}
-			camIparams[i].read(param_filepath, i, cv::Size(1920, 1080), frameSize);
+			camIparams[i].read(param_filepath, i, calibSize, frameSize);
 			cv::Mat K(3, 3, CV_64FC1);
 			for (size_t k = 0; k < camIparams[i].K.size(); ++k)
 				K.at<double>(k) = camIparams[i].K[k];

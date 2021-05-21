@@ -7,7 +7,7 @@
 
 
 using int32 = int32_t;
-Camera cam(vec3(0.f, 1.f, 1.f), vec3(0.f, 1.f, 0.f));
+Camera cam(glm::vec3(0.f, 1.f, 1.f), glm::vec3(0.f, 1.f, 0.f));
 
 float lastX = 1280 / 2.f; // last x pos cursor
 float lastY = 720 / 2.f; // last y pos cursor

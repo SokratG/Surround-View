@@ -119,7 +119,7 @@ public:
 	~SyncedCameraSource(){ close(); }	
 
 
-	int init(const std::string& param_filepath, const cv::Size& undistSize, const bool useUndist=false);
+        int init(const std::string& param_filepath, const cv::Size& calibSize, const cv::Size& undistSize, const bool useUndist=false);
 	bool startStream();
 	bool stopStream();
 	bool capture(std::array<Frame, 4>& frames);	

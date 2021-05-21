@@ -8,15 +8,15 @@ uniform sampler2D surroundTexture;
 
 const lowp float gamma_coef = 2.2f;
 
-const lowp float alpha = 0.3f;
-
 highp vec3 compute_tex_mix()
 {
 	highp vec3 color = vec3(texture(surroundTexture, textCoord));
 	
 	// blend last and first frame
-	if (textCoord.x >= 0.999f){
-		mediump vec2 tex_cord = vec2(1.f - textCoord.x, textCoord.y); 
+	if (textCoord.x >= 0.9995f){
+		mediump vec2 tex_cord = vec2(0.0f, textCoord.y); 
+		// weight coefficient for blending 
+		mediump float alpha = textCoord.x / 1.75f; 
 		color = mix(color, vec3(texture(surroundTexture, tex_cord)), alpha);
 	}
 

@@ -12,7 +12,7 @@ class Model
 {
 public:
     Model() : isInit(false) {}
-    Model(const std::string& pathmodel) {InitModel(pathmodel);}
+    Model(const std::string& pathmodel) : isInit(false) {InitModel(pathmodel);}
 
     void InitModel(const std::string& pathmodel);
     void Draw(Shader& shader);

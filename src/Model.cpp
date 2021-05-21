@@ -1,6 +1,5 @@
 #include <Model.hpp>
 #include <assimp/Importer.hpp>
-
 #include <assimp/postprocess.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -38,7 +37,6 @@ void Model::loadModel(const std::string& path)
             materials.emplace_back(mater);
         }
     }
-
 
     processNode(scene->mRootNode, scene);
 }

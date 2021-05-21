@@ -15,32 +15,19 @@
 
 using uint = unsigned int;
 using int32 = int32_t;
-using vec3 = glm::vec3;
-using point3 = glm::vec3;
-using mat4 = glm::mat4;
-using mat3 = glm::mat3;
+
 
 
 class View
 {
 private:
-        GLuint bowlVAO {0};
-        GLuint bowlVBO {0};
-        GLuint bowlEBO {0};
-        uint indexPartBowl {0};
-        float aspect_ratio;
-        int32 width;
-        int32 height;
-        cv::ogl::Texture2D texture;
-        std::shared_ptr<Camera> cam;
-        Shader SVshader;
-        bool isInit = false;
-        bool texReady;
-
+        bool initBowl();
+        bool initQuad();
 protected:
         void texturePrepare(const cv::cuda::GpuMat& frame);
         void drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame);
         void drawModel(const Camera& cam);
+        void drawQuad(const Camera& cam);
 #ifdef NO
         void glew_init(){
             glewExperimental = GL_TRUE;
@@ -57,8 +44,8 @@ public:
                      const std::string& pathfragshader, const glm::mat4& mat_transform);
 
 public:
-        View() :
-            aspect_ratio(0.f), width(0), height(0), texReady(false)
+        View(const int32 wnd_width_, const int32 wnd_height_) :
+            wnd_width(wnd_width_), wnd_height(wnd_height_), aspect_ratio(0.f), tex_width(0), tex_height(0), texReady(false)
         {}
         ~View(){clearBuffers();}
 
@@ -72,12 +59,33 @@ public:
 	}
 	
 
-        bool init(const int32 width, const int32 height, const float aspect_ratio_);
+        bool init(const int32 tex_width, const int32 tex_height, const float aspect_ratio_);
         void render(const Camera& cam, const cv::cuda::GpuMat& frame);
+private:
+        GLuint bowlVAO {0};
+        GLuint bowlVBO {0};
+        GLuint bowlEBO {0};
+        uint indexPartBowl {0};
+        float aspect_ratio;
+        int32 tex_width;
+        int32 tex_height;
+        cv::ogl::Texture2D texture;
+        Shader SVshader;
+private:
+        int32  wnd_width;
+        int32  wnd_height;
+        Shader frambuffshader;
+        GLuint framebuffer{0};
+        GLuint renderbuffer{0};
+        GLuint framebuffer_tex{0};
+        GLuint quadVAO{0};
+        GLuint quadVBO{0};
 private:
         std::vector<Model> models;
         std::vector<std::shared_ptr<Shader>> modelshaders;
         std::vector<glm::mat4> modeltranformations;
+        bool isInit = false;
+        bool texReady;
 };
 
 

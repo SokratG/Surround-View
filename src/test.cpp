@@ -42,17 +42,19 @@ int CameraCycle()
 	//cv::Size cameraSize(1280, 720);
 	cv::Size undistSize(640, 480);
 	//cv::Size undistSize(1280, 720);
+	cv::Size calibSize(CAMERA_WIDTH, CAMERA_HEIGHT);
+
 
 	source.setFrameSize(cameraSize);
 
-	int code = source.init("calibrationData/video", undistSize, false);
+	int code = source.init("calibrationData/1920/video", calibSize, undistSize, false);
 	if (code < 0){
 		std::cerr << "source init failed " << code << "\n";
 		return code;
 	}	
 	
 	source.startStream();
-	std::shared_ptr<View> view_scene = std::make_shared<View>();
+	std::shared_ptr<View> view_scene = std::make_shared<View>(1280, 720);
 	std::shared_ptr<DisplayView> dp = std::make_shared<DisplayView>();
 
 

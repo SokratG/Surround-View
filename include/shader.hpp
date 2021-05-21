@@ -29,13 +29,17 @@ public:
 
             fragmentshader = initShaders(GL_FRAGMENT_SHADER, fragmentfile);
 
+            if (vertexshader == 0 || fragmentshader == 0)
+                return false;
+
             if (geometryfile != nullptr)
                     geometryshader = initShaders(GL_GEOMETRY_SHADER, geometryfile);
 
-            if (vertexshader != 0 && fragmentshader != 0)
-                shaderprogram = initProgram();
-            else
+
+            shaderprogram = initProgram();
+            if (shaderprogram == 0)
                 return false;
+
 
             isInit = true;
 
