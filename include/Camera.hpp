@@ -1,7 +1,7 @@
 #pragma once
 #include <iostream>
 #include <string>
-#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
 //#include <opencv2/cudacodec.hpp>
 
 #include <cuda_runtime.h>
@@ -16,8 +16,11 @@ using namespace std::literals::chrono_literals;
 using uchar = unsigned char;
 
 
-#define CAMERA_WIDTH 1920
-#define CAMERA_HEIGHT 1080
+//#define CAMERA_WIDTH 1920
+//#define CAMERA_HEIGHT 1080
+
+#define CAMERA_WIDTH 1280
+#define CAMERA_HEIGHT 720
 
 //#define CAMERA_WIDTH 640
 //#define CAMERA_HEIGHT 480

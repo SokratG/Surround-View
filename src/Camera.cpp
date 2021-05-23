@@ -7,9 +7,10 @@
 #include <array>
 #include <fstream>
 
-
+#include <opencv2/calib3d.hpp>
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/cudaimgproc.hpp>
+#include <opencv2/cudawarping.hpp>
 
 
 #include <linux/videodev2.h>
@@ -650,7 +651,7 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 		if (_undistort){
 			cv::cuda::remap(uData, frames[i].gpuFrame, undistFrames[i].remapX, undistFrames[i].remapY,
 					cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), cudaStreamObj[i]);
-			frames[i].gpuFrame = frames[i].gpuFrame(undistFrames[i].roiFrame);
+			frames[i].gpuFrame = frames[i].gpuFrame(undistFrames[i].roiFrame);			
 		}	
 	}
 

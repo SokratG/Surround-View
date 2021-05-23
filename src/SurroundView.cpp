@@ -189,7 +189,7 @@ bool SurroundView::getDataFromFile(const std::string& dirpath, const bool use_fi
     return true;
 }
 
-
+#include <opencv2/highgui.hpp>
 bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 {
           cv::cuda::GpuMat gpu_result, warp_s, warp_img;
@@ -207,7 +207,8 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           warp_img.download(thresh);
 
           result.convertTo(result, CV_8U);
-
+          cv::imshow("Cam0", result);
+          return false;
 
           cv::threshold(thresh, thresh, 1, 255, cv::THRESH_BINARY);
 

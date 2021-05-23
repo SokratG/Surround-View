@@ -14,7 +14,7 @@ private:
         size_t imgs_num = 0;
         double conf_thresh = 0.8;
         double match_conf = 0.55;
-        int maxpoints = 1000;
+        int maxpoints = 2000;
         double work_scale = 1;
         double warped_image_scale = 1.;
         std::vector<cv::Mat> R;

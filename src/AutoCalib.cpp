@@ -44,11 +44,11 @@ bool AutoCalib::init(const std::vector<cv::Mat>& imgs, const bool savedata)
 	return isInit;
 }
 
-#include <opencv2/highgui.hpp>
+
 bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs, std::vector<cv::detail::MatchesInfo>& pairwise_matches, std::vector<cv::detail::ImageFeatures>& features)
 {
-	cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 5, 22, 0, 3, cv::ORB::HARRIS_SCORE, 22, 21); // 640x480
-	//cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 9, 21, 0, 3, cv::ORB::HARRIS_SCORE, 21, 24); // 1280x720
+	//cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 5, 22, 0, 3, cv::ORB::HARRIS_SCORE, 22, 21); // 640x480
+	cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 5, 24, 0, 3, cv::ORB::HARRIS_SCORE, 24, 25); // 1280x720
 	cv::Ptr<cv::detail::FeaturesMatcher> matcher = cv::makePtr<cv::detail::BestOf2NearestMatcher>(true, match_conf);
 
 
@@ -57,7 +57,7 @@ bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs
 
 
 	(*matcher)(features, pairwise_matches);
-#define DEBUG_P
+//#define DEBUG_P
 #ifdef DEBUG_P
 	for(const auto& m : pairwise_matches){
 	  std::cerr << m.confidence << "\n";

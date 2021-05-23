@@ -5,8 +5,8 @@
 #include <vector>
 #include <cmath>
 
-#define MAX_MASK_WIDTH 1600
-#define MAX_MASK_HEIGHT 1400
+#define MAX_MASK_WIDTH 2200
+#define MAX_MASK_HEIGHT 1500
 #define MIN_MASK_WIDTH 250
 #define MIN_MASK_HEIGHT 140
 

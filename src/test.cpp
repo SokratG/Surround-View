@@ -40,14 +40,14 @@ int CameraCycle()
 
 	cv::Size cameraSize(CAMERA_WIDTH, CAMERA_HEIGHT);
 	//cv::Size cameraSize(1280, 720);
-	cv::Size undistSize(640, 480);
-	//cv::Size undistSize(1280, 720);
+	//cv::Size undistSize(640, 480);
+	cv::Size undistSize(1280, 720);
 	cv::Size calibSize(CAMERA_WIDTH, CAMERA_HEIGHT);
 
 
 	source.setFrameSize(cameraSize);
 
-	int code = source.init("calibrationData/1920/video", calibSize, undistSize, false);
+	int code = source.init("calibrationData/1280/video", calibSize, undistSize, false);
 	if (code < 0){
 		std::cerr << "source init failed " << code << "\n";
 		return code;
@@ -62,12 +62,15 @@ int CameraCycle()
 
 	std::string win1{"Cam0"};
 	std::string win2{"Cam1"};
+	std::string win3{"Cam2"};
+	std::string win4{"Cam3"};
 
         //cv::VideoWriter invid("stream.avi", cv::VideoWriter::fourcc('D', 'I', 'V', 'X'), 20, cameraSize);
 	
-	//cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
-	//cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
-
+	cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
+	cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
+	//cv::namedWindow(win3, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
+	//cv::namedWindow(win4, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 	SurroundView sv;
 	
 	auto lastTick = std::chrono::high_resolution_clock::now();
@@ -79,15 +82,17 @@ int CameraCycle()
 			continue;
 		}	
 //#define YES
-#define GL_YES
+//#define GL_YES
 #ifdef YES
 		cv::imshow(win1, frames[0].gpuFrame);
-		cv::imshow(win2, frames[1].gpuFrame);
+		cv::imshow(win2, frames[3].gpuFrame);
+		//cv::imshow(win3, frames[2].gpuFrame);
+		//cv::imshow(win4, frames[3].gpuFrame);
 #else
 		if (!sv.getInit()){
 			std::vector<cv::cuda::GpuMat> datas {frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame, frames[3].gpuFrame};
 			//auto init = sv.init(datas);
-			auto init = sv.initFromFile("campar/", datas, true);
+			auto init = sv.initFromFile("campar/", datas, false);
 #ifdef GL_YES
 			if (init){
 			    const auto tex_size = sv.getResSize();
