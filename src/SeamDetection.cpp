@@ -9,7 +9,7 @@
 
 #include <iostream>
 
-//#define EXPERIMENTAL_TEST
+#define EXPERIMENTAL_TEST
 
 bool SeamDetector::init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R)
 {

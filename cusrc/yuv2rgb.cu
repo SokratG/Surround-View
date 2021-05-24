@@ -1,34 +1,17 @@
 #include "yuv2rgb.cuh"
 
+__host__ inline int divUp(int a, int b){
+	return ((a % b) != 0) ? (a / b + 1) : (a / b);
+}
+
+
 __device__ inline float clamp(float val, float min, float max)
 {
 	return (val >= min) ? ((val <= max) ? val : max) : min;
 }
 
 
-/*
-__global__ inline void gpuConvertUYVY2RGB_kernel(uchar* src, uchar* dst, uint width, uint height)
-{
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	if (idx*2 >= width)
-		return;
 
-	for(int i=0; i<height; ++i){
-		int cb = src[i*width*2+idx*4];
-		int y0 = src[i*width*2+idx*4+1];
-		int cr = src[i*width*2+idx*4+2];
-		int y1 = src[i*width*2+idx*4+3];
-		
-		dst[i*width*3+idx*6]   = clamp(1.164f * (y0 - 16) + 1.596f * (cr - 128),                       .0f, 255.f);	
-		dst[i*width*3+idx*6+1] = clamp(1.164f * (y0 - 16) - 0.813f * (cr - 128) - 0.391f * (cb - 128), .0f, 255.f);
-		dst[i*width*3+idx*6+2] = clamp(1.164f * (y0 - 16)                       + 2.018f * (cb - 128), .0f, 255.f);	
-					
-		dst[i*width*3+idx*6+3] = clamp(1.164f * (y1 - 16) + 1.596f * (cr - 128),                       .0f, 255.f);
-		dst[i*width*3+idx*6+4] = clamp(1.164f * (y1 - 16) - 0.813f * (cr - 128) - 0.391f * (cb - 128), .0f, 255.f);
-		dst[i*width*3+idx*6+5] = clamp(1.164f * (y1 - 16)                       + 2.018f * (cb - 128), .0f, 255.f);
-	}
-	
-}*/
 
 __global__ inline void gpuConvertUYVY2RGB_kernel(uchar* src, uchar* dst, uint width, uint height)
 {
@@ -38,20 +21,49 @@ __global__ inline void gpuConvertUYVY2RGB_kernel(uchar* src, uchar* dst, uint wi
 		return;
 
 	for(int y = 0; y < height; ++y){
-		int cb = src[y*width*2+idx*4];
-		int y0 = src[y*width*2+idx*4+1];
-		int cr = src[y*width*2+idx*4+2];
-		int y1 = src[y*width*2+idx*4+3];
+		const int y_w = y*width;
+		int cb = src[y_w*2+idx*4];
+		int y0 = src[y_w*2+idx*4+1];
+		int cr = src[y_w*2+idx*4+2];
+		int y1 = src[y_w*2+idx*4+3];
 		
-		dst[y*width*3+idx*6]   = clamp(1.164f * (y0 - 16)                       + 2.018f * (cb - 128), .0f, 255.f);
-		dst[y*width*3+idx*6+1] = clamp(1.164f * (y0 - 16) - 0.813f * (cr - 128) - 0.391f * (cb - 128), .0f, 255.f);
-		dst[y*width*3+idx*6+2] = clamp(1.164f * (y0 - 16) + 1.596f * (cr - 128),                       .0f, 255.f);
+		dst[y_w*3+idx*6]   = clamp(1.164f * (y0 - 16)                       + 2.018f * (cb - 128), .0f, 255.f);
+		dst[y_w*3+idx*6+1] = clamp(1.164f * (y0 - 16) - 0.813f * (cr - 128) - 0.391f * (cb - 128), .0f, 255.f);
+		dst[y_w*3+idx*6+2] = clamp(1.164f * (y0 - 16) + 1.596f * (cr - 128),                       .0f, 255.f);
 					
-		dst[y*width*3+idx*6+3] = clamp(1.164f * (y1 - 16)                       + 2.018f * (cb - 128), .0f, 255.f);
-		dst[y*width*3+idx*6+4] = clamp(1.164f * (y1 - 16) - 0.813f * (cr - 128) - 0.391f * (cb - 128), .0f, 255.f);
-		dst[y*width*3+idx*6+5] = clamp(1.164f * (y1 - 16) + 1.596f * (cr - 128),                       .0f, 255.f);
-	}
-	
+		dst[y_w*3+idx*6+3] = clamp(1.164f * (y1 - 16)                       + 2.018f * (cb - 128), .0f, 255.f);
+		dst[y_w*3+idx*6+4] = clamp(1.164f * (y1 - 16) - 0.813f * (cr - 128) - 0.391f * (cb - 128), .0f, 255.f);
+		dst[y_w*3+idx*6+5] = clamp(1.164f * (y1 - 16) + 1.596f * (cr - 128),                       .0f, 255.f);
+	}	
+}
+
+// another example:
+// https://github.com/dusty-nv/jetson-video/blob/master/cuda/cudaYUV-YUYV.cu
+__global__ inline void gpuConvertUYVY2RGB_opt_kernel(uchar* src, uchar* dst, uint width, uint height)
+{
+      const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+      const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+      if (x*2 >= width || y >= height)
+        return;
+
+
+      const int y_w = y*width;
+      int cb = src[y_w*2+x*4];
+      int y0 = src[y_w*2+x*4+1];
+      int cr = src[y_w*2+x*4+2];
+      int y1 = src[y_w*2+x*4+3];
+
+      dst[y_w*3+x*6]   = clamp(1.164f * (y0 - 16)                       + 2.018f * (cb - 128), .0f, 255.f);
+      dst[y_w*3+x*6+1] = clamp(1.164f * (y0 - 16) - 0.813f * (cr - 128) - 0.391f * (cb - 128), .0f, 255.f);
+      dst[y_w*3+x*6+2] = clamp(1.164f * (y0 - 16) + 1.596f * (cr - 128),                       .0f, 255.f);
+
+      dst[y_w*3+x*6+3] = clamp(1.164f * (y1 - 16)                       + 2.018f * (cb - 128), .0f, 255.f);
+      dst[y_w*3+x*6+4] = clamp(1.164f * (y1 - 16) - 0.813f * (cr - 128) - 0.391f * (cb - 128), .0f, 255.f);
+      dst[y_w*3+x*6+5] = clamp(1.164f * (y1 - 16) + 1.596f * (cr - 128),                       .0f, 255.f);
+
+
+
 }
 
 
@@ -142,3 +154,23 @@ void gpuConvertUYVY2RGB_async(uchar* src, uchar* dst, uint width, uint height, c
 
 
 
+
+void gpuConvertUYVY2RGB_opt(uchar* src, uchar* d_src, uchar* dst, uint width, uint height, cudaStream_t stream)
+{
+	size_t planeSize = width * height * sizeof(uchar);
+
+	cudaMemcpy(d_src, src, planeSize * 2, cudaMemcpyHostToDevice);
+
+	cudaStreamAttachMemAsync(stream, dst, 0 , cudaMemAttachGlobal);
+
+	//uint blockSize = 1024;
+	//uint numBlocks = (width / 2 + blockSize - 1) / blockSize;
+	//gpuConvertUYVY2RGB_kernel <<<numBlocks, blockSize >>>(d_src, dst, width, height);
+
+	const dim3 block(16, 16);
+	const dim3 grid(divUp(width/2, block.x), divUp(height, block.y));
+	gpuConvertUYVY2RGB_opt_kernel <<<grid, block>>>(d_src, dst, width, height);
+
+	//cudaStreamSynchronize(NULL);
+
+}

@@ -33,9 +33,10 @@ private:
         /* optional */
         std::vector<cv::cuda::GpuMat> texXmap; // texture remap x-coord
         std::vector<cv::cuda::GpuMat> texYmap; // texture remap y-coord
+        cv::cuda::GpuMat warpXmap, warpYmap;
         cv::Mat transformM;
         // --------------
-	cv::cuda::Stream streamObj;
+        cv::cuda::Stream streamObj;
         std::shared_ptr<CUDAMultiBandBlender> cuBlender;
 
 private:

@@ -63,7 +63,7 @@ bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs
 	  std::cerr << m.confidence << "\n";
 	}
 	cv::Mat temp;
-	cv::drawMatches(imgs[0], features[0].keypoints, imgs[1], features[1].keypoints, pairwise_matches[1].matches, temp);
+	cv::drawMatches(imgs[1], features[1].keypoints, imgs[2], features[2].keypoints, pairwise_matches[6].matches, temp);
 	cv::imshow("Cam1", temp);
 #endif
 

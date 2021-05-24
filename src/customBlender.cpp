@@ -28,6 +28,9 @@ extern "C" {
 
 	void normalizeUsingWeightMapGpu32F(const cv::cuda::PtrStepf weight, cv::cuda::PtrStep<short> src,
 						      const int width, const int height);
+
+	void normalizeUsingWeightMapGpu32F_Async(const cv::cuda::PtrStepf weight, cv::cuda::PtrStep<short> src,
+						      const int width, const int height, cudaStream_t stream_src);
 }
 
 static constexpr float WEIGHT_EPS = 1e-5f;
@@ -405,13 +408,13 @@ void CUDAMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_ma
     cv::Rect dst_rc(0, 0, dst_roi_final_.width, dst_roi_final_.height);
 
     for (auto i = 0; i <= numbands; ++i){
-        auto dst_i = gpu_dst_pyr_laplace_[i];
-        auto weight_i = gpu_dst_band_weights_[i];
-        normalizeUsingWeightMapGpu32F(weight_i, dst_i, weight_i.cols, weight_i.rows);
+        auto* dst_i = &gpu_dst_pyr_laplace_[i];
+        auto* weight_i = &gpu_dst_band_weights_[i];
+        normalizeUsingWeightMapGpu32F_Async(*weight_i, *dst_i, weight_i->cols, weight_i->rows, _cudaStreamDst);
     }
 
-    for(size_t i = numbands; i > 0; --i){
-        auto last_idx = gpu_ups_.size() - 1;
+    auto last_idx = gpu_ups_.size() - 1;
+    for(size_t i = numbands; i > 0; --i){      
         cv::cuda::pyrUp(gpu_dst_pyr_laplace_[i], gpu_ups_[last_idx][numbands-i], streamObj);
         cv::cuda::add(gpu_ups_[last_idx][numbands-i], gpu_dst_pyr_laplace_[i - 1], gpu_dst_pyr_laplace_[i - 1], cv::noArray(), -1, streamObj);
     }
@@ -421,12 +424,12 @@ void CUDAMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_ma
     cv::cuda::compare(dst_mask_, 0, mask, cv::CMP_EQ, streamObj);
 
     gpu_dst_pyr_laplace_[0](dst_rc).setTo(cv::Scalar::all(0), mask, streamObj);
-    gpu_dst_pyr_laplace_[0](dst_rc).convertTo(dst, CV_16S, streamObj);
+    gpu_dst_pyr_laplace_[0](dst_rc).convertTo(dst, CV_8U, streamObj);
     dst_mask_.copyTo(dst_mask, streamObj);
 
 
 #ifndef NO_OMP
-    #pragma omp parallel for default(none) shared(streamObj)
+    #pragma omp parallel for default(none)
 #endif
     for(auto i = 0; i < numbands+1; ++i){
         gpu_dst_band_weights_[i].setTo(0);

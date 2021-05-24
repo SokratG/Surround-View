@@ -31,7 +31,6 @@ void addCar(std::shared_ptr<View>& view_)
 
 int CameraCycle()
 {
-	cv::setNumThreads(4);
 #ifndef NO_OMP
 	omp_set_num_threads(omp_get_max_threads());
 #endif
@@ -39,9 +38,7 @@ int CameraCycle()
 	SyncedCameraSource source;
 
 	cv::Size cameraSize(CAMERA_WIDTH, CAMERA_HEIGHT);
-	//cv::Size cameraSize(1280, 720);
-	//cv::Size undistSize(640, 480);
-	cv::Size undistSize(1280, 720);
+	cv::Size undistSize(CAMERA_WIDTH, CAMERA_HEIGHT);
 	cv::Size calibSize(CAMERA_WIDTH, CAMERA_HEIGHT);
 
 
@@ -69,8 +66,7 @@ int CameraCycle()
 	
 	cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 	cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
-	//cv::namedWindow(win3, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
-	//cv::namedWindow(win4, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
+
 	SurroundView sv;
 	
 	auto lastTick = std::chrono::high_resolution_clock::now();
@@ -80,12 +76,12 @@ int CameraCycle()
 			std::cerr << "capture failed\n"; 	
 			std::this_thread::sleep_for(1ms); 
 			continue;
-		}	
+		}
 //#define YES
 //#define GL_YES
 #ifdef YES
 		cv::imshow(win1, frames[0].gpuFrame);
-		cv::imshow(win2, frames[3].gpuFrame);
+		//cv::imshow(win2, frames[1].gpuFrame);
 		//cv::imshow(win3, frames[2].gpuFrame);
 		//cv::imshow(win4, frames[3].gpuFrame);
 #else
@@ -96,7 +92,7 @@ int CameraCycle()
 #ifdef GL_YES
 			if (init){
 			    const auto tex_size = sv.getResSize();
-			    dp->init(1280, 720, tex_size.width, tex_size.height, view_scene);
+			    dp->init(CAMERA_WIDTH, CAMERA_HEIGHT, tex_size.width, tex_size.height, view_scene);
 			    addCar(view_scene);
 			}
 #endif

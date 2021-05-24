@@ -530,6 +530,10 @@ int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& 
 	    }
 	}
 	
+	size_t planeSize = undistSize.width * undistSize.height * sizeof(uchar);
+	for (auto i = 0; i < _cams.size(); ++i){
+	    cudaMalloc(&d_src[i], planeSize * 2);
+	}
 
 
 	if (_undistort){
@@ -643,15 +647,16 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 		auto& buff = buffs[i];
 		auto& dataBuffer = _cams[i].buffers[buff.index];
 		auto* cudaBuffer = _cams[i].cuda_out_buffer;
-	
-		gpuConvertUYVY2RGB_async((uchar*) dataBuffer.start, cudaBuffer, frameSize.width, frameSize.height, _cudaStreams[i]);
 
-		const auto uData = cv::cuda::GpuMat(frameSize, CV_8UC3, cudaBuffer);
+		gpuConvertUYVY2RGB_opt((uchar*)dataBuffer.start, d_src[i], cudaBuffer, frameSize.width, frameSize.height, _cudaStreams[i]);
+
+		const auto uData = std::move(cv::cuda::GpuMat(frameSize, CV_8UC3, cudaBuffer));
 
 		if (_undistort){
-			cv::cuda::remap(uData, frames[i].gpuFrame, undistFrames[i].remapX, undistFrames[i].remapY,
-					cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), cudaStreamObj[i]);
-			frames[i].gpuFrame = frames[i].gpuFrame(undistFrames[i].roiFrame);			
+			cv::cuda::GpuMat undist_mat;
+			cv::cuda::remap(uData, undist_mat, undistFrames[i].remapX, undistFrames[i].remapY,
+					cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), cudaStreamObj);
+			frames[i].gpuFrame = std::move(undist_mat(undistFrames[i].roiFrame));
 		}	
 	}
 

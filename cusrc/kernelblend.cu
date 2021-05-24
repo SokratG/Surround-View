@@ -39,6 +39,16 @@ extern "C" void normalizeUsingWeightMapGpu32F(const cv::cuda::PtrStepf weight, c
 
 
 
+extern "C" void normalizeUsingWeightMapGpu32F_Async(const cv::cuda::PtrStepf weight, cv::cuda::PtrStep<short> src,
+                                              const int width, const int height, cudaStream_t stream_src)
+{
+    cudaStreamAttachMemAsync(stream_src, src, 0 , cudaMemAttachGlobal);
+    dim3 threads(32, 32);
+    dim3 grid(divUp(width, threads.x), divUp(height, threads.y));
+    normalizeUsingWeightKernel32F<<<grid, threads>>> (weight, src, width, height);
+}
+
+
 // ------------------------------- CUDABlender --------------------------------
 __global__ void feedCUDA_kernel(uchar* img, uchar* mask, uchar* dst, uchar* dst_mask, int dx, int dy, int width, int height, int img_step, int dst_step, int mask_step, int mask_dst_step)
 {

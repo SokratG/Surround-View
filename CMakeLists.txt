@@ -11,7 +11,7 @@ set(
          ${CMAKE_NVCC_FLAGS};
          -Xcompiler
          -fopenmp
-         -O0
+         #-O3
          -use_fast_math
          -gencode arch=compute_62,code=sm_62
 )

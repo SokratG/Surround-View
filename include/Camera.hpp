@@ -128,6 +128,9 @@ public:
 	bool capture(std::array<Frame, 4>& frames);	
 	
 	void close(){
+                for (auto i = 0; i < _cams.size(); ++i){
+                    cudaFree(d_src[i]);
+                }
 		for (auto& cam : _cams)
 			cam.stopStream();
                 for (auto& _cudaStream : _cudaStreams){
@@ -148,11 +151,9 @@ public:
 	
 private:
         std::array<cudaStream_t, 4> _cudaStreams {{NULL}};
-        std::array<cv::cuda::Stream, 4> cudaStreamObj{{cv::cuda::Stream::Null()}};
+        cv::cuda::Stream cudaStreamObj{cv::cuda::Stream::Null()};
+        uchar* d_src[4];
 };
-
-//bool stitch_frames(std::array<SyncedCameraSource::Frame, 4>& in, SyncedCameraSource::Frame& out, bool isMove=false);
-
 
 
 

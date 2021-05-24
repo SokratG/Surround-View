@@ -183,7 +183,10 @@ bool SurroundView::getDataFromFile(const std::string& dirpath, const bool use_fi
           std::vector<cv::Point_<float>> src {tl, tr, bl, br};
           std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0), cv::Point(0, height_), cv::Point(width_, height_)};
           transformM = cv::getPerspectiveTransform(src, dst);
+
+          cv::cuda::buildWarpPerspectiveMaps(transformM, false, resSize, warpXmap, warpYmap);
     }
+
 
 
     return true;
@@ -231,12 +234,12 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 
           for(const auto& pcnt : cnts){
               for (const auto& pt : pcnt){
-                  if (bl.x > pt.x){
+                  if (bl.x >= pt.x){
                     bl = pt;
                     idx_tl = tot_idx;
                   }
 
-                  if (br.x < pt.x)
+                  if (br.x <= pt.x)
                     br = pt;  
 
                   tot_idx += 1;
@@ -269,10 +272,11 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
               }
           }
 
+
           resSize = result.size();
           /* add offset of coordinate corner points due to seam last frame */
-          tr.x -= (padding_warp >> 2);
-          br.x -= padding_warp; br.y += (padding_warp >> 1);
+          //tr.x -= (padding_warp >> 2);
+          //br.x -= padding_warp; br.y += (padding_warp >> 1);
 
           save_warpptr("corner_warppts.yaml", resSize, tl, tr, bl, br);
 
@@ -281,7 +285,9 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0),
                                               cv::Point(0, height_), cv::Point(width_, height_)};
           transformM = cv::getPerspectiveTransform(src, dst);
-          cv::warpPerspective(result, result, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT);
+          //cv::warpPerspective(result, result, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT);
+          cv::cuda::buildWarpPerspectiveMaps(transformM, false, resSize, warpXmap, warpYmap);
+
 
           return true;
 }
@@ -307,7 +313,7 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::
     }
 
     cv::cuda::GpuMat gpuimg_warped_s, gpuimg_warped;
-    cv::cuda::GpuMat stitch, mask_, temp;
+    cv::cuda::GpuMat stitch, mask_;
 
 #ifndef NO_OMP
     #pragma omp parallel for default(none) shared(imgs) private(gpuimg_warped, gpuimg_warped_s)
@@ -323,9 +329,7 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::
 
     cuBlender->blend(stitch, mask_, streamObj);
 
-    cv::cuda::warpPerspective(stitch, temp, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
-
-    temp.convertTo(blend_img, CV_8U, streamObj);
+    cv::cuda::remap(stitch, blend_img, warpXmap, warpYmap, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
 
     return true;
 }
