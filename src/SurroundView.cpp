@@ -231,7 +231,6 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           const auto xr_constrain = result.cols - (sizes[sizes.size()- 1].width >> 1);
           /* find bottom-left and bottorm-right corners (or if another warping tl and tr)*/
           auto idx_tl = 0, idx_tr = 0, tot_idx = 0;
-
           for(const auto& pcnt : cnts){
               for (const auto& pt : pcnt){
                   if (bl.x >= pt.x){
@@ -239,7 +238,8 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
                     idx_tl = tot_idx;
                   }
 
-                  if (br.x <= pt.x)
+                  /* cond. -> (bl.y < pt.y) depending of last mask seam */
+                  if (br.x <= pt.x && bl.y < pt.y)
                     br = pt;  
 
                   tot_idx += 1;
@@ -275,19 +275,16 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 
           resSize = result.size();
           /* add offset of coordinate corner points due to seam last frame */
-          //tr.x -= (padding_warp >> 2);
-          //br.x -= padding_warp; br.y += (padding_warp >> 1);
-
-          save_warpptr("corner_warppts.yaml", resSize, tl, tr, bl, br);
-
+          //save_warpptr("corner_warppts.yaml", resSize, tl, tr, bl, br);
 
           std::vector<cv::Point_<float>> src {tl, tr, bl, br};
+
           std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0),
                                               cv::Point(0, height_), cv::Point(width_, height_)};
           transformM = cv::getPerspectiveTransform(src, dst);
           //cv::warpPerspective(result, result, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT);
-          cv::cuda::buildWarpPerspectiveMaps(transformM, false, resSize, warpXmap, warpYmap);
 
+          cv::cuda::buildWarpPerspectiveMaps(transformM, false, resSize, warpXmap, warpYmap);
 
           return true;
 }

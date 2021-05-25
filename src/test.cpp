@@ -51,7 +51,7 @@ int CameraCycle()
 	}	
 	
 	source.startStream();
-	std::shared_ptr<View> view_scene = std::make_shared<View>(1280, 720);
+	std::shared_ptr<View> view_scene = std::make_shared<View>(CAMERA_WIDTH, CAMERA_HEIGHT);
 	std::shared_ptr<DisplayView> dp = std::make_shared<DisplayView>();
 
 
@@ -64,8 +64,8 @@ int CameraCycle()
 
         //cv::VideoWriter invid("stream.avi", cv::VideoWriter::fourcc('D', 'I', 'V', 'X'), 20, cameraSize);
 	
-	cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
-	cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
+	//cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
+	//cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 
 	SurroundView sv;
 	

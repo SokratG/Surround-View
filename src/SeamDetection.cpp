@@ -9,7 +9,7 @@
 
 #include <iostream>
 
-#define EXPERIMENTAL_TEST
+//#define EXPERIMENTAL_TEST
 
 bool SeamDetector::init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R)
 {
@@ -143,7 +143,6 @@ bool SeamDetector::seamDetect(const std::vector<cv::UMat>& imgs_warped, std::vec
 }
 
 
-
 void SeamDetector::fl_seam_detect(const std::vector<cv::UMat>& imgs_warped_f, std::vector<cv::UMat>& masks_warped_, int idxmax, int idxmin)
 {
       cv::Ptr<cv::detail::SeamFinder> seam_finder = cv::detail::SeamFinder::createDefault(cv::detail::SeamFinder::VORONOI_SEAM);
@@ -169,14 +168,17 @@ void SeamDetector::fl_seam_detect(const std::vector<cv::UMat>& imgs_warped_f, st
       std::vector<std::vector<cv::Point>> cnts;
       cv::findContours(mimg[0], cnts, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
       cv::Point br, tr;
+      auto idx_tr = 0;
       const auto half_w = mimg[0].cols >> 1;
       for(auto i = 0; i < cnts[0].size(); ++i){
           const auto& pt = cnts[0][i];
-          if (br.x <= pt.x)
+          if (br.x <= pt.x){
             br = pt;
+            idx_tr = i;
+          }
       }
 
-      for(auto i = 0; i < cnts[0].size() - 1; ++i){
+      for(auto i = idx_tr; i < cnts[0].size() - 1; ++i){
           const auto& pt = cnts[0][i];
           const auto& next_pt = cnts[0][i + 1];
           auto dy = next_pt.y - pt.y;
@@ -197,20 +199,23 @@ void SeamDetector::fl_seam_detect(const std::vector<cv::UMat>& imgs_warped_f, st
       /* for first image */
       cv::findContours(mimg[1], cnts, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
       cv::Point bl, tl;
+      auto idx_tl = 0;
       for(auto i = 0; i < cnts[0].size(); ++i){
           const auto& pt = cnts[0][i];
-          if (bl.x >= pt.x)
+          if (bl.x >= pt.x){
             bl = pt;
+            idx_tl = i;
+          }
       }
-      for(auto i = cnts[0].size() - 2; i >= 0; --i){
+      for(auto i = idx_tl; i >= 0; --i){
           const auto& pt = cnts[0][i + 1];
           const auto& prev_pt = cnts[0][i];
-          auto dy = prev_pt.y - pt.y;
+          auto dy = pt.y - prev_pt.y;
           if (pt.x < half_w && bl.y > pt.y && dy == 0){
             tl = pt;
             break;
           }
-      }
+      }      
 
       src_pts = std::vector<cv::Point_<float>>{tl, bl, cv::Point(mimg[1].cols, 0), cv::Point(mimg[1].cols, mimg[1].rows)};
       def_pts =  std::vector<cv::Point_<float>>{cv::Point(0, 0), cv::Point(tl.x, bl.y), cv::Point(mimg[1].cols, 0), cv::Point(mimg[1].cols, mimg[1].rows)};
@@ -218,9 +223,9 @@ void SeamDetector::fl_seam_detect(const std::vector<cv::UMat>& imgs_warped_f, st
       cv::warpPerspective(wimg[1], wimg[1], transformM, wimg[1].size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
       cv::warpPerspective(mimg[1], mimg[1], transformM, mimg[1].size(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
 
-
+      constexpr auto scale_factor = 3;
       /* compute new overlap ROI */
-      cor[1].x = cv::abs(corners[idxmin].x) - (sizes[idxmax].width / 3);
+      cor[1].x = cv::abs(corners[idxmin].x) - (sizes[idxmax].width / scale_factor);
       cor[0].y = cor[1].y = 0;
       seam_finder->find(wimg, cor, mimg);
       cv::warpPerspective(mimg[0], mimg[0], inv_transformM, mimg[0].size(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
