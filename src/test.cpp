@@ -78,15 +78,15 @@ int CameraCycle()
 			continue;
 		}
 //#define YES
-//#define GL_YES
+#define GL_YES
 #ifdef YES
 		cv::imshow(win1, frames[0].gpuFrame);
-		//cv::imshow(win2, frames[1].gpuFrame);
+		cv::imshow(win2, frames[1].gpuFrame);
 		//cv::imshow(win3, frames[2].gpuFrame);
 		//cv::imshow(win4, frames[3].gpuFrame);
 #else
 		if (!sv.getInit()){
-			std::vector<cv::cuda::GpuMat> datas {frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame, frames[3].gpuFrame};
+			std::vector<cv::cuda::GpuMat> datas {frames[3].gpuFrame, frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame};
 			//auto init = sv.init(datas);
 			auto init = sv.initFromFile("campar/", datas, false);
 #ifdef GL_YES
@@ -98,7 +98,7 @@ int CameraCycle()
 #endif
 		}
 		else{
-		    std::vector<cv::cuda::GpuMat*> datas {&frames[0].gpuFrame, &frames[1].gpuFrame, &frames[2].gpuFrame, &frames[3].gpuFrame};
+		    std::vector<cv::cuda::GpuMat> datas {frames[3].gpuFrame, frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame};
 		    cv::cuda::GpuMat res;
 
 		    sv.stitch(datas, res);

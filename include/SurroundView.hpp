@@ -35,6 +35,8 @@ private:
         std::vector<cv::cuda::GpuMat> texYmap; // texture remap y-coord
         cv::cuda::GpuMat warpXmap, warpYmap;
         cv::Mat transformM;
+        cv::Range row_range;
+        cv::Range col_range;
         // --------------
         cv::cuda::Stream streamObj;
         std::shared_ptr<CUDAMultiBandBlender> cuBlender;
@@ -52,7 +54,7 @@ public:
         SurroundView() : cuBlender(nullptr) {}
         bool init(const std::vector<cv::cuda::GpuMat>& imgs);
         bool initFromFile(const std::string& dirpath, const std::vector<cv::cuda::GpuMat>& imgs, const bool use_filewarp_pts=false);
-        bool stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::GpuMat& blend_img);
+        bool stitch(const std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& blend_img);
 };
 
 

@@ -44,16 +44,28 @@ bool AutoCalib::init(const std::vector<cv::Mat>& imgs, const bool savedata)
 	return isInit;
 }
 
-
 bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs, std::vector<cv::detail::MatchesInfo>& pairwise_matches, std::vector<cv::detail::ImageFeatures>& features)
 {
 	//cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 5, 22, 0, 3, cv::ORB::HARRIS_SCORE, 22, 21); // 640x480
-	cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 5, 24, 0, 3, cv::ORB::HARRIS_SCORE, 24, 25); // 1280x720
+	cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 5, 24, 0, 3, cv::ORB::HARRIS_SCORE, 24, 31); // 1280x720
 	cv::Ptr<cv::detail::FeaturesMatcher> matcher = cv::makePtr<cv::detail::BestOf2NearestMatcher>(true, match_conf);
 
-
-	for (int i = 0; i < imgs_num; ++i)
+#ifdef GAMMA_CORRECTION_CALIB
+	cv::Mat lookUpTable(1, 256, CV_8U);
+	uchar* p = lookUpTable.ptr();
+	constexpr auto gamma = 0.45;
+	for (int i = 0; i < 256; ++i){
+	   p[i] = cv::saturate_cast<uchar>(pow(i / 255.0, gamma) * 255.0);
+	}
+#endif
+	for (int i = 0; i < imgs_num; ++i){
+#ifdef GAMMA_CORRECTION_CALIB
+	      cv::Mat res;
+	      res = imgs[i].clone();
+	      cv::LUT(res, lookUpTable, res);
+#endif
 	      cv::detail::computeImageFeatures(finder, imgs[i], features[i]);
+	}
 
 
 	(*matcher)(features, pairwise_matches);
@@ -63,8 +75,8 @@ bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs
 	  std::cerr << m.confidence << "\n";
 	}
 	cv::Mat temp;
-	cv::drawMatches(imgs[1], features[1].keypoints, imgs[2], features[2].keypoints, pairwise_matches[6].matches, temp);
-	cv::imshow("Cam1", temp);
+	cv::drawMatches(imgs[0], features[0].keypoints, imgs[1], features[1].keypoints, pairwise_matches[1].matches, temp);
+	cv::imshow("Cam0", temp);
 #endif
 
 
@@ -138,6 +150,7 @@ void AutoCalib::saveData(const std::string& strpath) const
            KRfout << "FocalLength" << warped_image_scale;
            KRfout << "Intrisic" << Ks_f[i];
            KRfout << "Rotation" << R[i];
+           KRfout << "Translation" << T[i];
     }
 }
 

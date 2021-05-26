@@ -192,7 +192,7 @@ bool SurroundView::getDataFromFile(const std::string& dirpath, const bool use_fi
     return true;
 }
 
-#include <opencv2/highgui.hpp>
+
 bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 {
           cv::cuda::GpuMat gpu_result, warp_s, warp_img;
@@ -210,8 +210,8 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           warp_img.download(thresh);
 
           result.convertTo(result, CV_8U);
-          cv::imshow("Cam0", result);
-          return false;
+
+
 
           cv::threshold(thresh, thresh, 1, 255, cv::THRESH_BINARY);
 
@@ -227,64 +227,72 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           cv::Point tr(0, 0);
           cv::Point bl = cnts[0][0];
           cv::Point br = cnts[0][0];
-          /* constrain for right corner set manual -> start to find at middle of image*/
-          const auto xr_constrain = result.cols - (sizes[sizes.size()- 1].width >> 1);
+          const auto x_constrain_tl = sizes[0].width >> 1;
           /* find bottom-left and bottorm-right corners (or if another warping tl and tr)*/
-          auto idx_tl = 0, idx_tr = 0, tot_idx = 0;
+          auto idx_tl = 0, idx_tr = 0, tot_idx = 0;        
           for(const auto& pcnt : cnts){
               for (const auto& pt : pcnt){
                   if (bl.x >= pt.x){
                     bl = pt;
-                    idx_tl = tot_idx;
                   }
 
-                  /* cond. -> (bl.y < pt.y) depending of last mask seam */
-                  if (br.x <= pt.x && bl.y < pt.y)
-                    br = pt;  
+                  if (br.x < pt.x ){
+                    br = pt;
+                    idx_tr = tot_idx;
+                  }
 
                   tot_idx += 1;
-                  if (pt.x == xr_constrain)
-                    idx_tr = tot_idx;
+                  if (pt.x == x_constrain_tl && pt.y < (height_ / 2))
+                    idx_tl = tot_idx;
               }
           }
 
-          /* find top-left*/
-          for(auto i = idx_tl; i >= 0; --i){
-              const auto& pt = cnts[0][i + 1];
-              const auto& prev_pt = cnts[0][i];
-              auto dy = prev_pt.y - pt.y;
-              if (bl.y >= pt.y && dy == 0){
-                tl = pt;
-                break;
-              }
-          }
+
 
           /* find top-right*/
-          for(auto i = idx_tr; i >= 0; --i){
+          for(auto i = idx_tr; i < cnts[0].size() - 1; ++i){
               const auto& pt = cnts[0][i];
-              const auto& next_pt = cnts[0][i - 1];
+              const auto& next_pt = cnts[0][i + 1];
               auto dy = next_pt.y - pt.y;
-              // find corner point on seam of last frame
-              auto dx = cnts[0][i - 2].x - next_pt.x;
-              if (dy == 0 && dx == 0){
+              if (br.y > pt.y && dy == 0){
                 tr = pt;
                 break;
               }
           }
 
+          /* find top-left*/
+          for(auto i = idx_tl; i < cnts[0].size() - 1; ++i){
+              const auto& pt = cnts[0][i];
+              const auto& next_pt = cnts[0][i + 1];
+              auto dy = next_pt.y - pt.y;
+              if (dy == 0 && cnts[0][idx_tl].y < pt.y){
+                tl = pt;
+                break;
+              }
+          }
+
+
 
           resSize = result.size();
           /* add offset of coordinate corner points due to seam last frame */
-          //save_warpptr("corner_warppts.yaml", resSize, tl, tr, bl, br);
+
+          save_warpptr("corner_warppts.yaml", resSize, tl, tr, bl, br);
+          bl.x = tl.x;
+          bl.y += (padding_warp >> 1);
+          tl.y += padding_warp;
 
           std::vector<cv::Point_<float>> src {tl, tr, bl, br};
 
-          std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0),
+          std::vector<cv::Point_<float>> dst {cv::Point(0, tl.y), cv::Point(width_, 0),
                                               cv::Point(0, height_), cv::Point(width_, height_)};
           transformM = cv::getPerspectiveTransform(src, dst);
           //cv::warpPerspective(result, result, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT);
 
           cv::cuda::buildWarpPerspectiveMaps(transformM, false, resSize, warpXmap, warpYmap);
+          tl.y -= (padding_warp + 5);
+          row_range = cv::Range(tl.y, height_);
+          col_range = cv::Range(0,  width_);
+
 
           return true;
 }
@@ -302,7 +310,7 @@ void SurroundView::save_warpptr(const std::string& warpfile, const cv::Size& res
 }
 
 
-bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::GpuMat& blend_img)
+bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& blend_img)
 {
     if (!isInit){
         std::cerr << "SurroundView was not initialized...\n";
@@ -317,7 +325,7 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::
 #endif
     for(size_t i = 0; i < imgs_num; ++i){
 
-          cv::cuda::remap(*imgs[i], gpuimg_warped, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, cv::Scalar(), streamObj);
+          cv::cuda::remap(imgs[i], gpuimg_warped, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, cv::Scalar(), streamObj);
 
           gpuimg_warped.convertTo(gpuimg_warped_s, CV_16S, streamObj);
 
@@ -326,7 +334,9 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat*>& imgs, cv::cuda::
 
     cuBlender->blend(stitch, mask_, streamObj);
 
-    cv::cuda::remap(stitch, blend_img, warpXmap, warpYmap, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
+    cv::cuda::remap(stitch, gpuimg_warped, warpXmap, warpYmap, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
+
+    blend_img = gpuimg_warped(row_range, col_range);
 
     return true;
 }

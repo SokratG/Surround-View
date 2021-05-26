@@ -6,7 +6,7 @@
 #include <cmath>
 
 #define MAX_MASK_WIDTH 2200
-#define MAX_MASK_HEIGHT 1500
+#define MAX_MASK_HEIGHT 2000
 #define MIN_MASK_WIDTH 250
 #define MIN_MASK_HEIGHT 140
 
@@ -28,7 +28,8 @@ private:
     /* find seam between first and last frames */
     void fl_seam_detect(const std::vector<cv::UMat>& imgs_warped_f, std::vector<cv::UMat>& masks_warped_, int idxmax, int idxmin);
 protected:
-    bool warpedImage(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R,
+    bool warpedImage(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f,
+                     const std::vector<cv::Mat>& R, const std::vector<cv::Mat>& T,
                      std::vector<cv::UMat>& imgs_warped, std::vector<cv::UMat>& masks_warped);
     bool seamDetect(const std::vector<cv::UMat>& imgs_warped, std::vector<cv::UMat>& masks_warped);
 public:
@@ -47,5 +48,6 @@ public:
         imgs_num(num_imgs), warped_image_scale(warped_image_scale_),
         mask_maxnorm_size(MAX_MASK_WIDTH, MAX_MASK_HEIGHT), mask_minnorm_size(MIN_MASK_WIDTH, MIN_MASK_HEIGHT)
     {assert(num_imgs > 0);}
-    bool init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R);
+    bool init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R,
+              const std::vector<cv::Mat>& T = std::vector<cv::Mat>());
 };

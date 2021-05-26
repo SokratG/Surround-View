@@ -484,28 +484,51 @@ bool InternalCameraParams::read(const std::string& filepath, const int num, cons
 // -----------SyncedCameraSource Implementation-------------
 
 
-static cv::Point detectCornerCam(const cv::Size& src_size, const cv::Mat& xmap, const cv::Mat& ymap)
+/*
+static float r_kinv[9];
+static void mapForward_(const float scale, const float x, const float y, float& u, float& v)
 {
-    auto tl_uf = std::numeric_limits<float>::max();
-    auto tl_vf = std::numeric_limits<float>::max();
-    auto br_uf = std::numeric_limits<float>::min();
-    auto br_vf = std::numeric_limits<float>::min();
+  float x_ = r_kinv[0] * x + r_kinv[1] * y + r_kinv[2];
+  float y_ = r_kinv[3] * x + r_kinv[4] * y + r_kinv[5];
+  float z_ = r_kinv[6] * x + r_kinv[7] * y + r_kinv[8];
 
-    for(auto y = 0; y < src_size.height; ++y){
-        const auto* ptr_x = xmap.ptr<float>(y);
-        const auto* ptr_y = ymap.ptr<float>(y);
-        for(auto x = 0; x < src_size.width; ++x){
-            tl_uf = (std::min)(tl_uf, ptr_x[x]);
-            tl_vf = (std::min)(tl_vf, ptr_y[x]);
-            br_uf = (std::max)(br_uf, ptr_x[x]);
-            br_vf = (std::max)(br_vf, ptr_y[x]);
-        }
-
-    }
-    return cv::Point(static_cast<int>(tl_uf), static_cast<int>(tl_vf));
+  u = scale * x_;
+  v = scale * y_;
 }
 
+static cv::Point detectCornerCam(const cv::Size& src_size, const cv::Mat& K, const cv::Mat& R, const float scale)
+{
+    cv::Mat_<float> R_Kinv = R * K.inv();
+    r_kinv[0] = R_Kinv(0, 0); r_kinv[1] = R_Kinv(0, 1); r_kinv[2] = R_Kinv(0, 2);
+    r_kinv[3] = R_Kinv(1, 0); r_kinv[4] = R_Kinv(1, 1); r_kinv[5] = R_Kinv(1, 2);
+    r_kinv[6] = R_Kinv(2, 0); r_kinv[7] = R_Kinv(2, 1); r_kinv[8] = R_Kinv(2, 2);
 
+    float tl_uf = std::numeric_limits<float>::max();
+    float tl_vf = std::numeric_limits<float>::max();
+    float br_uf = std::numeric_limits<float>::min();
+    float br_vf = std::numeric_limits<float>::min();
+
+
+    float u, v;
+    for(auto y = 0; y < src_size.height; ++y){
+        for(auto x = 0; x < src_size.width; ++x){
+            mapForward_(scale, static_cast<float>(x), static_cast<float>(y), u, v);
+            tl_uf = (std::min)(tl_uf, u);
+            tl_vf = (std::min)(tl_vf, v);
+            br_uf = (std::max)(br_uf, u);
+            br_vf = (std::max)(br_vf, v);
+
+        }
+    }
+
+
+    cv::Point dst_tl(static_cast<int>(tl_uf), static_cast<int>(tl_vf));
+    cv::Point dst_br(static_cast<int>(br_uf), static_cast<int>(br_vf));
+    cv::Rect dst_roi(dst_tl, dst_br);
+
+    return dst_roi.tl();
+}
+*/
 
 
 
