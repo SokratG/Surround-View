@@ -6,9 +6,9 @@
 #include <cmath>
 
 #define MAX_MASK_WIDTH 2200
-#define MAX_MASK_HEIGHT 2000
-#define MIN_MASK_WIDTH 250
-#define MIN_MASK_HEIGHT 140
+#define MAX_MASK_HEIGHT 1800
+#define MIN_MASK_WIDTH 320
+#define MIN_MASK_HEIGHT 220
 
 
 class SeamDetector
@@ -22,6 +22,7 @@ private:
     cv::Size mask_maxnorm_size, mask_minnorm_size;
     double warped_image_scale = 1.0;
     double work_scale = 1.0;
+    double padding_factor = 5;
     size_t imgs_num = 0;
     bool isInit = false;
 private:
@@ -43,6 +44,7 @@ public:
     cv::Size getMaxNormSizeMask() const {return mask_maxnorm_size;}
     void setMinNormSizeMask(cv::Size& size){mask_minnorm_size = size;}
     cv::Size getMinNormSizeMask() const {return mask_minnorm_size;}
+    void setPaddingFactor(const double padding_factor_) {padding_factor = padding_factor_;}
 public:
     SeamDetector(const size_t num_imgs, const double warped_image_scale_) :
         imgs_num(num_imgs), warped_image_scale(warped_image_scale_),

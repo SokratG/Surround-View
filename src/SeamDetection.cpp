@@ -144,7 +144,6 @@ bool SeamDetector::seamDetect(const std::vector<cv::UMat>& imgs_warped, std::vec
       return true;
 }
 
-
 void SeamDetector::fl_seam_detect(const std::vector<cv::UMat>& imgs_warped_f, std::vector<cv::UMat>& masks_warped_, int idxmax, int idxmin)
 {
       cv::Ptr<cv::detail::SeamFinder> seam_finder = cv::detail::SeamFinder::createDefault(cv::detail::SeamFinder::DP_SEAM);
@@ -231,11 +230,10 @@ void SeamDetector::fl_seam_detect(const std::vector<cv::UMat>& imgs_warped_f, st
       cv::warpPerspective(wimg[1], wimg[1], transformM, wimg[1].size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
       cv::warpPerspective(mimg[1], mimg[1], transformM, mimg[1].size(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
 
-      constexpr auto scale_factor = 1;
       /* compute new overlap ROI */
-      cor[0].x = 0; cor[1].x = sizes[idxmax].width - 200;
-      //cv::abs(corners[idxmin].x) - (sizes[idxmax].width / scale_factor);
-      cor[0].y = -10; cor[1].y = 10;
+      cor[0].x = 0; cor[1].x = sizes[idxmax].width - (sizes[idxmax].width / padding_factor);
+      cor[0].y = -padding_factor; cor[1].y = padding_factor;
+
       seam_finder->find(wimg, cor, mimg);
 
       cv::warpPerspective(mimg[1], mimg[1], inv_transformM, mimg[1].size(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
