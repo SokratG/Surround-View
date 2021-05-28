@@ -11,7 +11,7 @@
 #define MIN_MASK_HEIGHT 220
 
 
-class SeamDetector
+class SVSeamDetector
 {
 private:
     std::vector<cv::cuda::GpuMat> gpu_seam_masks;
@@ -46,7 +46,7 @@ public:
     cv::Size getMinNormSizeMask() const {return mask_minnorm_size;}
     void setPaddingFactor(const double padding_factor_) {padding_factor = padding_factor_;}
 public:
-    SeamDetector(const size_t num_imgs, const double warped_image_scale_) :
+    SVSeamDetector(const size_t num_imgs, const double warped_image_scale_) :
         imgs_num(num_imgs), warped_image_scale(warped_image_scale_),
         mask_maxnorm_size(MAX_MASK_WIDTH, MAX_MASK_HEIGHT), mask_minnorm_size(MIN_MASK_WIDTH, MIN_MASK_HEIGHT)
     {assert(num_imgs > 0);}

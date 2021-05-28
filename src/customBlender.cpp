@@ -444,8 +444,40 @@ void CUDAMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_ma
 
 
 
+void CUDAMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::Stream& streamObj)
+{
+    cv::Rect dst_rc(0, 0, dst_roi_final_.width, dst_roi_final_.height);
+
+    for (auto i = 0; i <= numbands; ++i){
+        auto* dst_i = &gpu_dst_pyr_laplace_[i];
+        auto* weight_i = &gpu_dst_band_weights_[i];
+        normalizeUsingWeightMapGpu32F_Async(*weight_i, *dst_i, weight_i->cols, weight_i->rows, _cudaStreamDst);
+    }
+
+    auto last_idx = gpu_ups_.size() - 1;
+    for(size_t i = numbands; i > 0; --i){
+        cv::cuda::pyrUp(gpu_dst_pyr_laplace_[i], gpu_ups_[last_idx][numbands-i], streamObj);
+        cv::cuda::add(gpu_ups_[last_idx][numbands-i], gpu_dst_pyr_laplace_[i - 1], gpu_dst_pyr_laplace_[i - 1], cv::noArray(), -1, streamObj);
+    }
+
+    cv::cuda::GpuMat mask;
+    cv::cuda::compare(gpu_dst_band_weights_[0](dst_rc), WEIGHT_EPS, dst_mask_, cv::CMP_GT, streamObj);
+    cv::cuda::compare(dst_mask_, 0, mask, cv::CMP_EQ, streamObj);
+
+    gpu_dst_pyr_laplace_[0](dst_rc).setTo(cv::Scalar::all(0), mask, streamObj);
+    gpu_dst_pyr_laplace_[0](dst_rc).convertTo(dst, CV_8U, streamObj);
 
 
+#ifndef NO_OMP
+  #pragma omp parallel for default(none)
+#endif
+    for(auto i = 0; i < numbands+1; ++i){
+        gpu_dst_band_weights_[i].setTo(0);
+        gpu_dst_pyr_laplace_[i].setTo(cv::Scalar::all(0));
+    }
+
+
+}
 
 
 

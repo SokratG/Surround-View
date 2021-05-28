@@ -484,54 +484,6 @@ bool InternalCameraParams::read(const std::string& filepath, const int num, cons
 // -----------SyncedCameraSource Implementation-------------
 
 
-/*
-static float r_kinv[9];
-static void mapForward_(const float scale, const float x, const float y, float& u, float& v)
-{
-  float x_ = r_kinv[0] * x + r_kinv[1] * y + r_kinv[2];
-  float y_ = r_kinv[3] * x + r_kinv[4] * y + r_kinv[5];
-  float z_ = r_kinv[6] * x + r_kinv[7] * y + r_kinv[8];
-
-  u = scale * x_;
-  v = scale * y_;
-}
-
-static cv::Point detectCornerCam(const cv::Size& src_size, const cv::Mat& K, const cv::Mat& R, const float scale)
-{
-    cv::Mat_<float> R_Kinv = R * K.inv();
-    r_kinv[0] = R_Kinv(0, 0); r_kinv[1] = R_Kinv(0, 1); r_kinv[2] = R_Kinv(0, 2);
-    r_kinv[3] = R_Kinv(1, 0); r_kinv[4] = R_Kinv(1, 1); r_kinv[5] = R_Kinv(1, 2);
-    r_kinv[6] = R_Kinv(2, 0); r_kinv[7] = R_Kinv(2, 1); r_kinv[8] = R_Kinv(2, 2);
-
-    float tl_uf = std::numeric_limits<float>::max();
-    float tl_vf = std::numeric_limits<float>::max();
-    float br_uf = std::numeric_limits<float>::min();
-    float br_vf = std::numeric_limits<float>::min();
-
-
-    float u, v;
-    for(auto y = 0; y < src_size.height; ++y){
-        for(auto x = 0; x < src_size.width; ++x){
-            mapForward_(scale, static_cast<float>(x), static_cast<float>(y), u, v);
-            tl_uf = (std::min)(tl_uf, u);
-            tl_vf = (std::min)(tl_vf, v);
-            br_uf = (std::max)(br_uf, u);
-            br_vf = (std::max)(br_vf, v);
-
-        }
-    }
-
-
-    cv::Point dst_tl(static_cast<int>(tl_uf), static_cast<int>(tl_vf));
-    cv::Point dst_br(static_cast<int>(br_uf), static_cast<int>(br_vf));
-    cv::Rect dst_roi(dst_tl, dst_br);
-
-    return dst_roi.tl();
-}
-*/
-
-
-
 int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& calibSize, const cv::Size& undistSize, const bool useUndist)
 {
 	bool camsOpenOk = true;
@@ -560,30 +512,30 @@ int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& 
 
 
 	if (_undistort){
-		for (size_t i = 0; i < _cams.size(); ++i){
-			if (param_filepath.empty()){
-				LOG_ERROR("Invalid input path with parameter...");
-				return -1;
-			}
-			camIparams[i].read(param_filepath, i, calibSize, frameSize);
-			cv::Mat K(3, 3, CV_64FC1);
-			for (size_t k = 0; k < camIparams[i].K.size(); ++k)
-				K.at<double>(k) = camIparams[i].K[k];
-			cv::Mat D(camIparams[i].distortion);
-			const cv::Size calibratedFrameSize(camIparams[i].resolution);
-			auto& uData = undistFrames[i];
-			cv::Mat newK;
-			if (useUndist)
-				newK = cv::getOptimalNewCameraMatrix(K, D, undistSize, 1,  undistSize, &uData.roiFrame); // 0.0 ? 1.0
-			else
-				newK = cv::getOptimalNewCameraMatrix(K, D, calibratedFrameSize, 1,  undistSize, &uData.roiFrame); // 0.0 ? 1.0
-			Ks[i] = newK;
-			cv::Mat mapX, mapY;
-			cv::initUndistortRectifyMap(K, D, cv::Mat(), newK, undistSize, CV_32FC1, mapX, mapY);
-			uData.remapX.upload(mapX);
-			uData.remapY.upload(mapY);
-			LOG_DEBUG("Generating undistort maps for camera - %i ... OK", i);
-		}	
+	      for (size_t i = 0; i < _cams.size(); ++i){
+		    if (param_filepath.empty()){
+			    LOG_ERROR("Invalid input path with parameter...");
+			    return -1;
+		    }
+		    camIparams[i].read(param_filepath, i, calibSize, frameSize);
+		    cv::Mat K(3, 3, CV_64FC1);
+		    for (size_t k = 0; k < camIparams[i].K.size(); ++k)
+			    K.at<double>(k) = camIparams[i].K[k];
+		    cv::Mat D(camIparams[i].distortion);
+		    const cv::Size calibratedFrameSize(camIparams[i].resolution);
+		    auto& uData = undistFrames[i];
+		    cv::Mat newK;
+		    if (useUndist)
+			    newK = cv::getOptimalNewCameraMatrix(K, D, undistSize, 1,  undistSize, &uData.roiFrame); // 0.0 ? 1.0
+		    else
+			    newK = cv::getOptimalNewCameraMatrix(K, D, calibratedFrameSize, 1,  undistSize, &uData.roiFrame); // 0.0 ? 1.0
+		    Ks[i] = newK;
+		    cv::Mat mapX, mapY;
+		    cv::initUndistortRectifyMap(K, D, cv::Mat(), newK, undistSize, CV_32FC1, mapX, mapY);
+		    uData.remapX.upload(mapX);
+		    uData.remapY.upload(mapY);
+		    LOG_DEBUG("Generating undistort maps for camera - %i ... OK", i);
+	      }
 	}
 
 	return 0;

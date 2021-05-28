@@ -18,7 +18,7 @@ using int32 = int32_t;
 
 
 
-class View
+class SVView
 {
 private:
         bool initBowl();
@@ -44,13 +44,13 @@ public:
                      const std::string& pathfragshader, const glm::mat4& mat_transform);
 
 public:
-        View(const int32 wnd_width_, const int32 wnd_height_) :
+        SVView(const int32 wnd_width_, const int32 wnd_height_) :
             wnd_width(wnd_width_), wnd_height(wnd_height_), aspect_ratio(0.f), tex_width(0), tex_height(0), texReady(false)
         {}
-        ~View(){clearBuffers();}
+        ~SVView(){clearBuffers();}
 
-	View& operator=(const View&) = delete;
-	View(const View&) = delete;
+        SVView& operator=(const SVView&) = delete;
+        SVView(const SVView&) = delete;
 	
 	void clearBuffers(){
                 glDeleteVertexArrays(1, &bowlVAO);

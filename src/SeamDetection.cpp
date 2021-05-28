@@ -9,9 +9,9 @@
 
 #include <iostream>
 
-#define EXPERIMENTAL_TEST
+//#define EXPERIMENTAL_TEST
 
-bool SeamDetector::init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R, const std::vector<cv::Mat>& T)
+bool SVSeamDetector::init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R, const std::vector<cv::Mat>& T)
 {
         if (isInit){
             std::cerr << "SeamDetector already initialize...\n";
@@ -45,8 +45,7 @@ bool SeamDetector::init(const std::vector<cv::Mat>& imgs, const std::vector<cv::
 }
 
 
-
-bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f,
+bool SVSeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f,
                                const std::vector<cv::Mat>& R, const std::vector<cv::Mat>& T,
                                 std::vector<cv::UMat>& imgs_warped, std::vector<cv::UMat>& masks_warped_)
 {
@@ -62,9 +61,9 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
 
 
     cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::SphericalWarper>();
-    //cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::CylindricalWarper>();
 
     cv::Ptr<cv::detail::RotationWarper> warper = warper_creator->create(static_cast<float>(warped_image_scale * work_scale));
+
 
     for(size_t i = 0; i < imgs_num; ++i){
           corners[i] = warper->warp(imgs[i], Ks_f[i], R[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, imgs_warped[i]);
@@ -90,7 +89,7 @@ bool SeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::vect
 }
 
 
-bool SeamDetector::seamDetect(const std::vector<cv::UMat>& imgs_warped, std::vector<cv::UMat>& masks_warped_)
+bool SVSeamDetector::seamDetect(const std::vector<cv::UMat>& imgs_warped, std::vector<cv::UMat>& masks_warped_)
 {
       std::vector<cv::UMat> imgs_warped_f(imgs_num);
       std::vector<cv::cuda::GpuMat> gpu_warpmasks(imgs_num);
@@ -144,7 +143,7 @@ bool SeamDetector::seamDetect(const std::vector<cv::UMat>& imgs_warped, std::vec
       return true;
 }
 
-void SeamDetector::fl_seam_detect(const std::vector<cv::UMat>& imgs_warped_f, std::vector<cv::UMat>& masks_warped_, int idxmax, int idxmin)
+void SVSeamDetector::fl_seam_detect(const std::vector<cv::UMat>& imgs_warped_f, std::vector<cv::UMat>& masks_warped_, int idxmax, int idxmin)
 {
       cv::Ptr<cv::detail::SeamFinder> seam_finder = cv::detail::SeamFinder::createDefault(cv::detail::SeamFinder::DP_SEAM);
 

@@ -96,6 +96,8 @@ public:
 
         void blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj = cv::cuda::Stream::Null());
 
+        void blend(cv::cuda::GpuMat &dst, cv::cuda::Stream& streamObj = cv::cuda::Stream::Null());
+
 private:
         void prepare_pyr(const cv::Rect& dst_roi);
         void prepare_roi(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes);

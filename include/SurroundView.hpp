@@ -17,7 +17,7 @@
 
 
 
-class SurroundView
+class SVStitcher
 {
 private:
 	bool isInit = false;
@@ -51,7 +51,7 @@ public:
         bool getInit() const {return isInit;}
         cv::Size getResSize() const {return resSize;}
 public:
-        SurroundView() : cuBlender(nullptr) {}
+        SVStitcher() : cuBlender(nullptr) {}
         bool init(const std::vector<cv::cuda::GpuMat>& imgs);
         bool initFromFile(const std::string& dirpath, const std::vector<cv::cuda::GpuMat>& imgs, const bool use_filewarp_pts=false);
         bool stitch(const std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& blend_img);

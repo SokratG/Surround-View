@@ -14,13 +14,20 @@
 static auto isstart = false;
 static constexpr auto padding_warp = 20;
 
-bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs){
+bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	
 	if (isInit){
 	    std::cerr << "SurroundView already initialize...\n";
 	    return false;
 	}
 	
+	/*
+	    1. Split rear veiwing to two images
+	    2. Autocalibrate all images
+	    3. Find seams
+	    4. stitch
+	*/
+
 	imgs_num = imgs.size();	
 
 	if (imgs_num <= 1){
@@ -45,7 +52,7 @@ bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	Ks_f = autcalib.getIntCameraParam();
 
 
-	SeamDetector smd(imgs_num, warped_image_scale);
+	SVSeamDetector smd(imgs_num, warped_image_scale);
 	res = smd.init(cpu_imgs, Ks_f, R);
 	if (!res){
 	    std::cerr << "Error can't seam masks for images...\n";
@@ -77,7 +84,7 @@ bool SurroundView::init(const std::vector<cv::cuda::GpuMat>& imgs){
 }
 
 
-bool SurroundView::initFromFile(const std::string& dirpath, const std::vector<cv::cuda::GpuMat>& imgs, const bool use_filewarp_pts)
+bool SVStitcher::initFromFile(const std::string& dirpath, const std::vector<cv::cuda::GpuMat>& imgs, const bool use_filewarp_pts)
 {
     if (isInit){
         std::cerr << "SurroundView already initialize...\n";
@@ -110,7 +117,7 @@ bool SurroundView::initFromFile(const std::string& dirpath, const std::vector<cv
             return false;
         }
 
-        SeamDetector smd(imgs_num, warped_image_scale);
+        SVSeamDetector smd(imgs_num, warped_image_scale);
         res = smd.init(cpu_imgs, Ks_f, R);
         if (!res){
             std::cerr << "Error can't seam masks for images...\n";
@@ -146,7 +153,7 @@ bool SurroundView::initFromFile(const std::string& dirpath, const std::vector<cv
 }
 
 
-bool SurroundView::getDataFromFile(const std::string& dirpath, const bool use_filewarp_pts)
+bool SVStitcher::getDataFromFile(const std::string& dirpath, const bool use_filewarp_pts)
 {
     Ks_f = std::move(std::vector<cv::Mat>(imgs_num));
     R = std::move(std::vector<cv::Mat>(imgs_num));
@@ -197,8 +204,8 @@ bool SurroundView::getDataFromFile(const std::string& dirpath, const bool use_fi
     return true;
 }
 
-
-bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
+#include <opencv2/highgui.hpp>
+bool SVStitcher::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 {
           cv::cuda::GpuMat gpu_result, warp_s, warp_img;
           for(size_t i = 0; i < imgs_num; ++i){
@@ -214,7 +221,11 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           gpu_result.download(result);
           warp_img.download(thresh);
 
-          //result.convertTo(result, CV_8U);
+
+          // !!!!!!!!!!!!
+          result.convertTo(result, CV_8U);
+          cv::imshow("Cam0", result);
+          return false;
 
           cv::threshold(thresh, thresh, 1, 255, cv::THRESH_BINARY);
 
@@ -286,7 +297,7 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           col_range = cv::Range(0,  width_);
 
 
-          save_warpptr("corner_warppts.yaml", resSize, tl, tr, bl, br);
+          //save_warpptr("corner_warppts.yaml", resSize, tl, tr, bl, br);
 
           std::vector<cv::Point_<float>> src {tl, tr, bl, br};
 
@@ -301,7 +312,7 @@ bool SurroundView::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           return true;
 }
 
-void SurroundView::save_warpptr(const std::string& warpfile, const cv::Size& res_size,
+void SVStitcher::save_warpptr(const std::string& warpfile, const cv::Size& res_size,
                                 const cv::Point& tl, const cv::Point& tr, const cv::Point& bl, const cv::Point& br)
 {
     cv::FileStorage WPTSfout(warpfile, cv::FileStorage::WRITE);
@@ -314,7 +325,7 @@ void SurroundView::save_warpptr(const std::string& warpfile, const cv::Size& res
 }
 
 
-bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& blend_img)
+bool SVStitcher::stitch(const std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& blend_img)
 {
     if (!isInit){
         std::cerr << "SurroundView was not initialized...\n";
@@ -322,7 +333,7 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::G
     }
 
     cv::cuda::GpuMat gpuimg_warped_s, gpuimg_warped;
-    cv::cuda::GpuMat stitch, mask_;
+    cv::cuda::GpuMat stitch;
 
 #ifndef NO_OMP
     #pragma omp parallel for default(none) shared(imgs) private(gpuimg_warped, gpuimg_warped_s)
@@ -336,12 +347,9 @@ bool SurroundView::stitch(const std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::G
           cuBlender->feed(gpuimg_warped_s, gpu_seam_masks[i], i, streamObj);
     }
 
-    cuBlender->blend(stitch, mask_, streamObj);
+    cuBlender->blend(stitch, streamObj);
 
-    cv::cuda::remap(stitch, gpuimg_warped, warpXmap, warpYmap, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
-
-    blend_img = gpuimg_warped(row_range, col_range);
-
+    cv::cuda::remap(stitch, blend_img, warpXmap, warpYmap, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
 
     return true;
 }

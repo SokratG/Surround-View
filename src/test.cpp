@@ -15,7 +15,7 @@ void sig_handler(int signo)
 }
 
 
-void addCar(std::shared_ptr<View>& view_)
+void addCar(std::shared_ptr<SVView>& view_)
 {
     glm::mat4 transform_car(1.f);
     transform_car = glm::translate(transform_car, glm::vec3(0.f, 0.37f, 0.f));
@@ -51,8 +51,8 @@ int CameraCycle()
 	}	
 	
 	source.startStream();
-	std::shared_ptr<View> view_scene = std::make_shared<View>(CAMERA_WIDTH, CAMERA_HEIGHT);
-	std::shared_ptr<DisplayView> dp = std::make_shared<DisplayView>();
+	std::shared_ptr<SVView> view_scene = std::make_shared<SVView>(CAMERA_WIDTH, CAMERA_HEIGHT);
+	std::shared_ptr<SVDisplayView> dp = std::make_shared<SVDisplayView>();
 
 
 	std::array<SyncedCameraSource::Frame, 4> frames;
@@ -67,7 +67,7 @@ int CameraCycle()
 	cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 	cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 
-	SurroundView sv;
+	SVStitcher sv;
 	
 	auto lastTick = std::chrono::high_resolution_clock::now();
 	for (; !finish; ){			
@@ -88,7 +88,7 @@ int CameraCycle()
 		if (!sv.getInit()){
 			std::vector<cv::cuda::GpuMat> datas {frames[3].gpuFrame, frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame};
 			//auto init = sv.init(datas);
-			auto init = sv.initFromFile("campar/", datas, true);
+			auto init = sv.initFromFile("campar/", datas, false);
 #ifdef GL_YES
 			if (init){
 			    const auto tex_size = sv.getResSize();
@@ -102,7 +102,7 @@ int CameraCycle()
 		    cv::cuda::GpuMat res;
 
 		    sv.stitch(datas, res);
-		    cv::imshow(win1, res);
+		    //cv::imshow(win1, res);
 #ifdef GL_YES
 		    bool okRender = dp->render(res);
 		    if (!okRender)

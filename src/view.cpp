@@ -6,7 +6,7 @@
 
 #include <cuda_gl_interop.h>
 
-void View::render(const Camera& cam, const cv::cuda::GpuMat& frame)
+void SVView::render(const Camera& cam, const cv::cuda::GpuMat& frame)
 {
     // render command
     // ...
@@ -30,7 +30,7 @@ void View::render(const Camera& cam, const cv::cuda::GpuMat& frame)
 }
 
 
-bool View::init(const int32 tex_width, const int32 tex_height, const float aspect_ratio_)
+bool SVView::init(const int32 tex_width, const int32 tex_height, const float aspect_ratio_)
 {
     if (isInit)
             return isInit;
@@ -54,7 +54,7 @@ bool View::init(const int32 tex_width, const int32 tex_height, const float aspec
 }
 
 
-void View::texturePrepare(const cv::cuda::GpuMat& frame)
+void SVView::texturePrepare(const cv::cuda::GpuMat& frame)
 {
     if (!texReady){
         texture.create(frame.size(), cv::ogl::Texture2D::Format::RGB, false);
@@ -67,7 +67,7 @@ void View::texturePrepare(const cv::cuda::GpuMat& frame)
 
 
 
-void View::drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame)
+void SVView::drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame)
 {
     glm::mat4 model(1.f);
     auto view = cam.getView();
@@ -90,7 +90,7 @@ void View::drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame)
     glDrawElements(GL_TRIANGLE_STRIP, indexPartBowl, GL_UNSIGNED_INT, 0);
 }
 
-void View::drawModel(const Camera& cam)
+void SVView::drawModel(const Camera& cam)
 {
     glm::mat4 model(1.f);
     auto view = cam.getView();
@@ -108,7 +108,7 @@ void View::drawModel(const Camera& cam)
 }
 
 
-void View::drawQuad(const Camera& cam)
+void SVView::drawQuad(const Camera& cam)
 {
     frambuffshader.useProgramm();
 
@@ -119,7 +119,7 @@ void View::drawQuad(const Camera& cam)
 }
 
 
-bool View::addModel(const std::string& pathmodel, const std::string& pathvertshader,
+bool SVView::addModel(const std::string& pathmodel, const std::string& pathvertshader,
               const std::string& pathfragshader, const glm::mat4& mat_transform)
 {
     bool res = pathmodel.empty() || pathvertshader.empty() || pathfragshader.empty();
@@ -153,7 +153,7 @@ bool View::addModel(const std::string& pathmodel, const std::string& pathvertsha
 
 
 
-bool View::initBowl()
+bool SVView::initBowl()
 {
     bool isgen = SVshader.initShader("shaders/svvert.glsl", "shaders/svfrag.glsl");
 
@@ -202,7 +202,7 @@ bool View::initBowl()
 }
 
 
-bool View::initQuad()
+bool SVView::initQuad()
 {
     auto isgen = frambuffshader.initShader("shaders/frame_screenvert.glsl", "shaders/frame_screenfrag.glsl");
 

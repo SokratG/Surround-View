@@ -66,24 +66,24 @@ static void processInput(GLFWwindow* window)
 }
 
 
-class DisplayView
+class SVDisplayView
 {
 private:
 	GLFWwindow* window;
         int32 width, height;
         float aspect_ratio;
-        std::shared_ptr<View> disp_view;
+        std::shared_ptr<SVView> disp_view;
         bool isInit;
 public:
-        DisplayView() : window(nullptr), disp_view(nullptr){
+        SVDisplayView() : window(nullptr), disp_view(nullptr){
             width = 0;
             height = 0;
             isInit = false;
 	}
-        ~DisplayView(){glfwTerminate();}
+        ~SVDisplayView(){glfwTerminate();}
 
         bool init(const int32 wnd_width, const int32 wnd_height,
-                  const int32 tex_width, const int32 tex_height, std::shared_ptr<View> scene_view){
+                  const int32 tex_width, const int32 tex_height, std::shared_ptr<SVView> scene_view){
             if (isInit)
                     return isInit;
             this->width = wnd_width;
