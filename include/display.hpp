@@ -72,7 +72,7 @@ private:
 	GLFWwindow* window;
         int32 width, height;
         float aspect_ratio;
-        std::shared_ptr<SVView> disp_view;
+        std::shared_ptr<SVRender> disp_view;
         bool isInit;
 public:
         SVDisplayView() : window(nullptr), disp_view(nullptr){
@@ -83,7 +83,7 @@ public:
         ~SVDisplayView(){glfwTerminate();}
 
         bool init(const int32 wnd_width, const int32 wnd_height,
-                  const int32 tex_width, const int32 tex_height, std::shared_ptr<SVView> scene_view){
+                  const int32 tex_width, const int32 tex_height, std::shared_ptr<SVRender> scene_view){
             if (isInit)
                     return isInit;
             this->width = wnd_width;

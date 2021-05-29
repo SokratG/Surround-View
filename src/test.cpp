@@ -3,7 +3,7 @@
 #include <csignal>
 #include "display.hpp"
 #include <omp.h>
-
+#include <opencv2/highgui.hpp>
 
 static bool finish = false;
 void sig_handler(int signo)
@@ -15,7 +15,7 @@ void sig_handler(int signo)
 }
 
 
-void addCar(std::shared_ptr<SVView>& view_)
+void addCar(std::shared_ptr<SVRender>& view_)
 {
     glm::mat4 transform_car(1.f);
     transform_car = glm::translate(transform_car, glm::vec3(0.f, 0.37f, 0.f));
@@ -51,7 +51,7 @@ int CameraCycle()
 	}	
 	
 	source.startStream();
-	std::shared_ptr<SVView> view_scene = std::make_shared<SVView>(CAMERA_WIDTH, CAMERA_HEIGHT);
+	std::shared_ptr<SVRender> view_scene = std::make_shared<SVRender>(CAMERA_WIDTH, CAMERA_HEIGHT);
 	std::shared_ptr<SVDisplayView> dp = std::make_shared<SVDisplayView>();
 
 
@@ -88,7 +88,7 @@ int CameraCycle()
 		if (!sv.getInit()){
 			std::vector<cv::cuda::GpuMat> datas {frames[3].gpuFrame, frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame};
 			//auto init = sv.init(datas);
-			auto init = sv.initFromFile("campar/", datas, false);
+			auto init = sv.initFromFile("campar/", datas, true);
 #ifdef GL_YES
 			if (init){
 			    const auto tex_size = sv.getResSize();
@@ -102,7 +102,7 @@ int CameraCycle()
 		    cv::cuda::GpuMat res;
 
 		    sv.stitch(datas, res);
-		    //cv::imshow(win1, res);
+		    cv::imshow(win1, res);
 #ifdef GL_YES
 		    bool okRender = dp->render(res);
 		    if (!okRender)

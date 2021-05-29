@@ -14,6 +14,22 @@ using int32 = int32_t;
 constexpr static float default_center[3]{0.f}; // for default value pass to constructor - argument center
 
 
+struct ConfigBowl
+{
+    float a, b, c;
+    float disk_radius;
+    float parab_radius;
+    float hole_radius;
+    float vertices_num;
+    ConfigBowl() : a(0.0f), b(0.0f), c(0.0f), disk_radius(0.0f), parab_radius(0.0f), hole_radius(0.0f), vertices_num(0.0f) {}
+    ConfigBowl(const float a_, const float b_, const float c_,
+               const float disk_radius_, const float parab_radius_, const float hole_radius_,
+               const float vertices_num_) :
+                a(a_), b(b_), c(c_), disk_radius(disk_radius_), parab_radius(parab_radius_),
+                hole_radius(hole_radius_), vertices_num(vertices_num_)
+    {}
+};
+
 
 class Bowl
 {
@@ -38,6 +54,13 @@ public:
             cen[0] = center[0];
             cen[1] = center[1];
             cen[2] = center[2];
+    }
+    Bowl(const ConfigBowl& cbowl, const float center[3] = default_center) : inner_rad(cbowl.disk_radius), rad(cbowl.parab_radius),
+        param_a(cbowl.a), param_b(cbowl.b), param_c(cbowl.c), hole_rad(cbowl.hole_radius)
+    {
+        cen[0] = center[0];
+        cen[1] = center[1];
+        cen[2] = center[2];
     }
 
     bool generate_mesh(const float max_size_vert, std::vector<float>& vertices, std::vector<uint>& indices)
@@ -308,6 +331,14 @@ private:
 public:
     PartitionBowl(const float inner_radius, const float radius, const float a, const float b, const float c, const float center[3]=default_center)
             : inner_rad(inner_radius), rad(radius), param_a(a), param_b(b), param_c(c), hole_rad(0.f)
+    {
+        cen[0] = center[0];
+        cen[1] = center[1];
+        cen[2] = center[2];
+    }
+
+    PartitionBowl(const ConfigBowl& cbowl, const float center[3] = default_center) : inner_rad(cbowl.disk_radius), rad(cbowl.parab_radius),
+        param_a(cbowl.a), param_b(cbowl.b), param_c(cbowl.c), hole_rad(cbowl.hole_radius)
     {
         cen[0] = center[0];
         cen[1] = center[1];

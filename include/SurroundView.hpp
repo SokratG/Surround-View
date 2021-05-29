@@ -11,7 +11,7 @@
 
 #include <cuda_runtime.h>
 
-#include "customBlender.h"
+#include "customBlender.hpp"
 
 
 

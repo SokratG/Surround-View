@@ -25,7 +25,7 @@ bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	    1. Split rear veiwing to two images
 	    2. Autocalibrate all images
 	    3. Find seams
-	    4. stitch
+	    4. Stitch
 	*/
 
 	imgs_num = imgs.size();	
@@ -349,7 +349,9 @@ bool SVStitcher::stitch(const std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::Gpu
 
     cuBlender->blend(stitch, streamObj);
 
-    cv::cuda::remap(stitch, blend_img, warpXmap, warpYmap, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
+    cv::cuda::remap(stitch, gpuimg_warped, warpXmap, warpYmap, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
+
+    blend_img = gpuimg_warped(row_range, col_range);
 
     return true;
 }

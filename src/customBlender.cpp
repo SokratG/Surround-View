@@ -1,4 +1,4 @@
-#include "customBlender.h"
+#include "customBlender.hpp"
 #include <opencv2/cudaarithm.hpp>
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/imgproc.hpp>
