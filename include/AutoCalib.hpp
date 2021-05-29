@@ -12,9 +12,9 @@ class AutoCalib
 {
 private:
         size_t imgs_num = 0;
-        double conf_thresh = 0.82;
-        double match_conf = 0.6;
-        int maxpoints = 3000;
+        double conf_thresh = 0.85;
+        double match_conf = 0.65;
+        int maxpoints = 2500;
         double work_scale = 1;
         double warped_image_scale = 1.;
         std::vector<cv::Mat> R;

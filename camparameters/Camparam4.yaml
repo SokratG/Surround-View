@@ -1,0 +1,21 @@
+%YAML:1.0
+---
+FocalLength: 1.0766313476562500e+03
+Intrisic: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: f
+   data: [ 1.27196960e+03, 0., 302., 0., 1.27196960e+03, 284., 0., 0.,
+       1. ]
+Rotation: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: f
+   data: [ 1.00513220e-01, 2.79003292e-01, -9.55015421e-01,
+       -3.81984003e-02, 9.60250854e-01, 2.76512474e-01, 9.94202077e-01,
+       8.68689548e-03, 1.07175373e-01 ]
+Translation: !!opencv-matrix
+   rows: 3
+   cols: 1
+   dt: d
+   data: [ 0., 0., 0. ]

@@ -46,6 +46,7 @@ private:
                           const cv::Point& tl, const cv::Point& tr, const cv::Point& bl, const cv::Point& br);
         bool prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs);
         bool getDataFromFile(const std::string& dirpath, const bool use_filewarp_pts);
+        void splitRearView(std::vector<cv::cuda::GpuMat>& imgs);
 
 public:
         bool getInit() const {return isInit;}
@@ -54,7 +55,7 @@ public:
         SVStitcher() : cuBlender(nullptr) {}
         bool init(const std::vector<cv::cuda::GpuMat>& imgs);
         bool initFromFile(const std::string& dirpath, const std::vector<cv::cuda::GpuMat>& imgs, const bool use_filewarp_pts=false);
-        bool stitch(const std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& blend_img);
+        bool stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& blend_img);
 };
 
 

@@ -64,8 +64,8 @@ int CameraCycle()
 
         //cv::VideoWriter invid("stream.avi", cv::VideoWriter::fourcc('D', 'I', 'V', 'X'), 20, cameraSize);
 	
-	cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
-	cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
+	//cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
+	//cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 
 	SVStitcher sv;
 	
@@ -78,15 +78,14 @@ int CameraCycle()
 			continue;
 		}
 //#define YES
-//#define GL_YES
+#define GL_YES
 #ifdef YES
 		cv::imshow(win1, frames[0].gpuFrame);
-		cv::imshow(win2, frames[2].gpuFrame);
-		//cv::imshow(win3, frames[2].gpuFrame);
-		//cv::imshow(win4, frames[3].gpuFrame);
+		cv::imshow(win2, frames[1].gpuFrame);
+
 #else
 		if (!sv.getInit()){
-			std::vector<cv::cuda::GpuMat> datas {frames[3].gpuFrame, frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame};
+			std::vector<cv::cuda::GpuMat> datas {cv::cuda::GpuMat(), frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame, frames[3].gpuFrame};
 			//auto init = sv.init(datas);
 			auto init = sv.initFromFile("campar/", datas, true);
 #ifdef GL_YES
@@ -98,11 +97,11 @@ int CameraCycle()
 #endif
 		}
 		else{
-		    std::vector<cv::cuda::GpuMat> datas {frames[3].gpuFrame, frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame};
+		    std::vector<cv::cuda::GpuMat> datas {cv::cuda::GpuMat(), frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame, frames[3].gpuFrame};
 		    cv::cuda::GpuMat res;
 
 		    sv.stitch(datas, res);
-		    cv::imshow(win1, res);
+		    //cv::imshow(win1, res);
 #ifdef GL_YES
 		    bool okRender = dp->render(res);
 		    if (!okRender)

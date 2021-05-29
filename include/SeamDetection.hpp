@@ -5,10 +5,10 @@
 #include <vector>
 #include <cmath>
 
-#define MAX_MASK_WIDTH 2200
-#define MAX_MASK_HEIGHT 1800
-#define MIN_MASK_WIDTH 320
-#define MIN_MASK_HEIGHT 220
+#define MAX_MASK_WIDTH 2000
+#define MAX_MASK_HEIGHT 1500
+#define MIN_MASK_WIDTH 360
+#define MIN_MASK_HEIGHT 240
 
 
 class SVSeamDetector
@@ -22,12 +22,8 @@ private:
     cv::Size mask_maxnorm_size, mask_minnorm_size;
     double warped_image_scale = 1.0;
     double work_scale = 1.0;
-    double padding_factor = 5;
     size_t imgs_num = 0;
     bool isInit = false;
-private:
-    /* find seam between first and last frames */
-    void fl_seam_detect(const std::vector<cv::UMat>& imgs_warped_f, std::vector<cv::UMat>& masks_warped_, int idxmax, int idxmin);
 protected:
     bool warpedImage(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f,
                      const std::vector<cv::Mat>& R, const std::vector<cv::Mat>& T,
@@ -44,7 +40,6 @@ public:
     cv::Size getMaxNormSizeMask() const {return mask_maxnorm_size;}
     void setMinNormSizeMask(cv::Size& size){mask_minnorm_size = size;}
     cv::Size getMinNormSizeMask() const {return mask_minnorm_size;}
-    void setPaddingFactor(const double padding_factor_) {padding_factor = padding_factor_;}
 public:
     SVSeamDetector(const size_t num_imgs, const double warped_image_scale_) :
         imgs_num(num_imgs), warped_image_scale(warped_image_scale_),
