@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include <stdint.h>
-#include "view.hpp"
+#include "SVRender.hpp"
 #define GLFW_INCLUDE_ES32
 #include "glfw3/glfw3.h"
 

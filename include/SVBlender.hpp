@@ -4,14 +4,14 @@
 #include <cuda_runtime.h>
 
 // ------------------------------- CUDABlender --------------------------------
-class CUDABlender
+class SVBlender
 {
 private:
 	cudaStream_t _cudaStreamImage;
 	cudaStream_t _cudaStreamMask;	
 public:
-        CUDABlender();
-        ~CUDABlender();
+        SVBlender();
+        ~SVBlender();
 
 	void prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes);
   
@@ -31,15 +31,15 @@ public:
 
 
 // ------------------------------- CUDAFeatherBlender --------------------------------
-class CUDAFeatherBlender
+class SVFeatherBlender
 {
 private:
         cudaStream_t _cudaStreamDst;
         cudaStream_t _cudaStreamDst_weight;
         bool use_cache_weight_ = false;
 public:
-        CUDAFeatherBlender(const float sharpness = 0.02f);
-        ~CUDAFeatherBlender();
+        SVFeatherBlender(const float sharpness = 0.02f);
+        ~SVFeatherBlender();
 
         void prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes);
 
@@ -65,7 +65,7 @@ public:
 
 
 
-class CUDAMultiBandBlender
+class SVMultiBandBlender
 {
 protected:
         typedef struct Border_
@@ -87,8 +87,8 @@ private:
         cudaStream_t _cudaStreamDst;
         cudaStream_t _cudaStreamDst_weight;
 public:
-        CUDAMultiBandBlender(const int numbands_ = 1);
-        ~CUDAMultiBandBlender();
+        SVMultiBandBlender(const int numbands_ = 1);
+        ~SVMultiBandBlender();
 
         void prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes, const std::vector<cv::cuda::GpuMat>& masks);
 

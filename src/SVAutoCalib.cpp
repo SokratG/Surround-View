@@ -1,4 +1,4 @@
-#include "AutoCalib.hpp"
+#include "SVAutoCalib.hpp"
 #include <opencv2/stitching/detail/motion_estimators.hpp>
 #include <opencv2/stitching/detail/matchers.hpp>
 #include <opencv2/stitching/detail/camera.hpp>
@@ -44,7 +44,7 @@ bool AutoCalib::init(const std::vector<cv::Mat>& imgs, const bool savedata)
 	return isInit;
 }
 
-#include <opencv2/highgui.hpp>
+
 bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs, std::vector<cv::detail::MatchesInfo>& pairwise_matches, std::vector<cv::detail::ImageFeatures>& features)
 {
 	//cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 5, 22, 0, 3, cv::ORB::HARRIS_SCORE, 22, 21); // 640x480
@@ -70,14 +70,11 @@ bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs
 
 
 	(*matcher)(features, pairwise_matches);
-#define DEBUG_P
+
 #ifdef DEBUG_P
 	for(const auto& m : pairwise_matches){
 	  std::cerr << m.confidence << "\n";
 	}
-	//cv::Mat temp;
-	//cv::drawMatches(imgs[1], features[1].keypoints, imgs[2], features[2].keypoints, pairwise_matches[7].matches, temp);
-	//cv::imshow("Cam0", temp);
 #endif
 
 
@@ -99,11 +96,6 @@ bool AutoCalib::computeCameraParameters(const std::vector<cv::detail::ImageFeatu
 		cv::Mat R;
 		cameras[i].R.convertTo(R, CV_32F);
 		cameras[i].R = R;
-#ifdef NO_COMPILE
-		cameras[i].focal = intrisicMat[i].at<double>(0, 0);
-		cameras[i].ppx = intrisicMat[i].at<double>(0, 2);
-		cameras[i].ppy = intrisicMat[i].at<double>(1, 2);
-#endif
 	}
 
 	cv::Ptr<cv::detail::BundleAdjusterBase> adjuster = cv::makePtr<cv::detail::BundleAdjusterRay>();

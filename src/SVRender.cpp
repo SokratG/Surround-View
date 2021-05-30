@@ -1,4 +1,4 @@
-#include "view.hpp"
+#include "SVRender.hpp"
 #include "Bowl.hpp"
 #include <opencv2/core/opengl.hpp>
 
@@ -166,8 +166,8 @@ bool SVRender::initBowl()
     /* Bowl parameter */
     ConfigBowl cbowl;
     cbowl.disk_radius = 0.3f;
-    cbowl.parab_radius = 0.4f;
-    cbowl.hole_radius = 0.07f;
+    cbowl.parab_radius = 0.5f;
+    cbowl.hole_radius = 0.06f;
     cbowl.a = 0.4f; cbowl.b = 0.4f; cbowl.c = 0.15f;
     cbowl.vertices_num  = 750.f;
 

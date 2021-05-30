@@ -1,4 +1,4 @@
-#include "customBlender.hpp"
+#include "SVBlender.hpp"
 #include <opencv2/cudaarithm.hpp>
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/imgproc.hpp>
@@ -36,7 +36,7 @@ extern "C" {
 static constexpr float WEIGHT_EPS = 1e-5f;
 
 // ------------------------------- CUDABlender --------------------------------
-CUDABlender::CUDABlender()
+SVBlender::SVBlender()
 {
 	if (cudaStreamCreate(&_cudaStreamImage) != cudaError::cudaSuccess)
 		_cudaStreamImage = NULL;
@@ -45,7 +45,7 @@ CUDABlender::CUDABlender()
 }
 
 
-CUDABlender::~CUDABlender(void)
+SVBlender::~SVBlender(void)
 {
 	if(_cudaStreamImage)
 	   cudaStreamDestroy(_cudaStreamImage);
@@ -54,13 +54,13 @@ CUDABlender::~CUDABlender(void)
 }
 
 
-void CUDABlender::prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes)
+void SVBlender::prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes)
 {
 	prepare(cv::detail::resultRoi(corners, sizes));
 }
 
 
-void CUDABlender::prepare(cv::Rect dst_roi)
+void SVBlender::prepare(cv::Rect dst_roi)
 {
 	dst_ = cv::cuda::GpuMat(dst_roi.size(), CV_16SC3);
 	dst_.setTo(cv::Scalar::all(0));
@@ -70,7 +70,7 @@ void CUDABlender::prepare(cv::Rect dst_roi)
 }
 
 
-void CUDABlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, cv::Point tl)
+void SVBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, cv::Point tl)
 {
 
 	CV_Assert(_img.type() == CV_16SC3);
@@ -86,7 +86,7 @@ void CUDABlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, cv::Poin
 }
 
 
-void CUDABlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj)
+void SVBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj)
 {
 #ifdef NO_COMPILE
 	if (_cudaStreamImage && _cudaStreamMask){
@@ -109,7 +109,7 @@ void CUDABlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::c
 
 
 // ------------------------------- CUDAFeatherBlender --------------------------------
-CUDAFeatherBlender::CUDAFeatherBlender(const float sharpness) :
+SVFeatherBlender::SVFeatherBlender(const float sharpness) :
       sharpness_(sharpness), use_cache_weight_(false)
 {
 
@@ -119,7 +119,7 @@ CUDAFeatherBlender::CUDAFeatherBlender(const float sharpness) :
             _cudaStreamDst_weight = NULL;
 }
 
-CUDAFeatherBlender::~CUDAFeatherBlender()
+SVFeatherBlender::~SVFeatherBlender()
 {
     if(_cudaStreamDst)
        cudaStreamDestroy(_cudaStreamDst);
@@ -128,13 +128,13 @@ CUDAFeatherBlender::~CUDAFeatherBlender()
 }
 
 
-void CUDAFeatherBlender::prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes)
+void SVFeatherBlender::prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes)
 {
         prepare(cv::detail::resultRoi(corners, sizes));
 }
 
 
-void CUDAFeatherBlender::prepare(cv::Rect dst_roi)
+void SVFeatherBlender::prepare(cv::Rect dst_roi)
 {
 	dst_ = cv::cuda::GpuMat(dst_roi.size(), CV_16SC3);
 	dst_.setTo(cv::Scalar::all(0));
@@ -147,7 +147,7 @@ void CUDAFeatherBlender::prepare(cv::Rect dst_roi)
 }
 
 
-void CUDAFeatherBlender::createWeightMap(const cv::cuda::GpuMat& mask, cv::cuda::GpuMat& weight, cv::cuda::Stream& streamObj)
+void SVFeatherBlender::createWeightMap(const cv::cuda::GpuMat& mask, cv::cuda::GpuMat& weight, cv::cuda::Stream& streamObj)
 {
       cv::Mat _mask, _weight;
       mask.download(_mask);
@@ -158,7 +158,7 @@ void CUDAFeatherBlender::createWeightMap(const cv::cuda::GpuMat& mask, cv::cuda:
       cv::cuda::threshold(temp, weight, 1.f, 1.f, cv::THRESH_TRUNC, streamObj);
 }
 
-void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, const cv::Point& tl, cv::cuda::Stream& streamObj)
+void SVFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, const cv::Point& tl, cv::cuda::Stream& streamObj)
 {
 
 	CV_Assert(_img.type() == CV_16SC3);
@@ -176,7 +176,7 @@ void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, c
 
 }
 
-void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, const cv::Point& tl, const int idx, cv::cuda::Stream& streamObj)
+void SVFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, const cv::Point& tl, const int idx, cv::cuda::Stream& streamObj)
 {
 
 	CV_Assert(_img.type() == CV_16SC3);
@@ -200,7 +200,7 @@ void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, c
 }
 
 
- void CUDAFeatherBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj)
+ void SVFeatherBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj)
  {
 
      normalizeUsingWeightMapGpu32F(dst_weight_map_, dst_, dst_weight_map_.cols, dst_weight_map_.rows);
@@ -219,7 +219,7 @@ void CUDAFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, c
  }
 
 
-void CUDAFeatherBlender::prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes, const std::vector<cv::cuda::GpuMat>& masks)
+void SVFeatherBlender::prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes, const std::vector<cv::cuda::GpuMat>& masks)
 {
     prepare(cv::detail::resultRoi(corners, sizes));
     weight_maps_ = std::move(std::vector<cv::cuda::GpuMat>(sizes.size()));
@@ -236,7 +236,7 @@ void CUDAFeatherBlender::prepare(const std::vector<cv::Point> &corners, const st
 
 
 // ------------------------------- CUDAMultiBandBlender --------------------------------
-CUDAMultiBandBlender::CUDAMultiBandBlender(const int numbands_) : numbands(numbands_)
+SVMultiBandBlender::SVMultiBandBlender(const int numbands_) : numbands(numbands_)
 {
       CV_Assert(numbands_ >= 1);
 
@@ -246,7 +246,7 @@ CUDAMultiBandBlender::CUDAMultiBandBlender(const int numbands_) : numbands(numba
               _cudaStreamDst_weight = NULL;
 }
 
-CUDAMultiBandBlender::~CUDAMultiBandBlender()
+SVMultiBandBlender::~SVMultiBandBlender()
 {
       if(_cudaStreamDst)
          cudaStreamDestroy(_cudaStreamDst);
@@ -255,7 +255,7 @@ CUDAMultiBandBlender::~CUDAMultiBandBlender()
 }
 
 
-void CUDAMultiBandBlender::prepare_roi(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes)
+void SVMultiBandBlender::prepare_roi(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes)
 {
 	prepare_pyr(cv::detail::resultRoi(corners, sizes));
 
@@ -307,7 +307,7 @@ void CUDAMultiBandBlender::prepare_roi(const std::vector<cv::Point> &corners, co
 
 }
 
-void CUDAMultiBandBlender::prepare_pyr(const cv::Rect& dst_roi)
+void SVMultiBandBlender::prepare_pyr(const cv::Rect& dst_roi)
 {
 	dst_roi_final_ = dst_roi;
 	dst_roi_ = dst_roi;
@@ -341,7 +341,7 @@ void CUDAMultiBandBlender::prepare_pyr(const cv::Rect& dst_roi)
 }
 
 
-void CUDAMultiBandBlender::prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes, const std::vector<cv::cuda::GpuMat>& masks)
+void SVMultiBandBlender::prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes, const std::vector<cv::cuda::GpuMat>& masks)
 {
       prepare_roi(corners, sizes);
 
@@ -361,7 +361,7 @@ void CUDAMultiBandBlender::prepare(const std::vector<cv::Point> &corners, const 
 }
 
 
-void CUDAMultiBandBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, const int idx, cv::cuda::Stream& streamObj)
+void SVMultiBandBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, const int idx, cv::cuda::Stream& streamObj)
 {
       CV_Assert(_img.type() == CV_16SC3);
       CV_Assert(_mask.type() == CV_8U);
@@ -403,7 +403,7 @@ void CUDAMultiBandBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask,
       }
 }
 
-void CUDAMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj)
+void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj)
 {
     cv::Rect dst_rc(0, 0, dst_roi_final_.width, dst_roi_final_.height);
 
@@ -444,7 +444,7 @@ void CUDAMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_ma
 
 
 
-void CUDAMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::Stream& streamObj)
+void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::Stream& streamObj)
 {
     cv::Rect dst_rc(0, 0, dst_roi_final_.width, dst_roi_final_.height);
 

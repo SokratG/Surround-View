@@ -3,7 +3,7 @@
 #include <string>
 #include <glm.hpp>
 
-#include <shader.hpp>
+#include <Shader.hpp>
 
 
 

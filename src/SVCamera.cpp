@@ -20,7 +20,7 @@
 
 #include "cusrc/yuv2rgb.cuh"
 
-#include "Camera.hpp"
+#include "SVCamera.hpp"
 
 
 #define LOG_DEBUG(msg, ...)   printf("DEBUG:   " msg "\n", ##__VA_ARGS__)

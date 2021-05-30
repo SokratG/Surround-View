@@ -15,15 +15,12 @@ using namespace std::literals::chrono_literals;
 
 using uchar = unsigned char;
 
-
-//#define CAMERA_WIDTH 1920
-//#define CAMERA_HEIGHT 1080
+/*
+    Video4linux 2
+*/
 
 #define CAMERA_WIDTH 1280
 #define CAMERA_HEIGHT 720
-
-//#define CAMERA_WIDTH 640
-//#define CAMERA_HEIGHT 480
 
 #define BUFFER_MAP
 #define MMAP_BUFFERS_COUNT 4

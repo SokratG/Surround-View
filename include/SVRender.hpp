@@ -1,11 +1,11 @@
 #pragma once
 #include <glm.hpp>
-#include "CudaOGL.hpp"
+#include "SVCudaOGL.hpp"
 
 #include <opencv2/core/opengl.hpp>
 #include <opencv2/cudaimgproc.hpp>
 
-#include "virtcam.hpp"
+#include "Virtcam.hpp"
 #include "Model.hpp"
 
 

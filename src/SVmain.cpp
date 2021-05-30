@@ -1,7 +1,7 @@
-#include "SurroundView.hpp"
-#include "Camera.hpp"
+#include "SVStitcher.hpp"
+#include "SVCamera.hpp"
 #include <csignal>
-#include "display.hpp"
+#include "SVDisplay.hpp"
 #include <omp.h>
 #include <opencv2/highgui.hpp>
 
@@ -56,18 +56,18 @@ int CameraCycle()
 
 
 	std::array<SyncedCameraSource::Frame, 4> frames;
+	std::vector<cv::cuda::GpuMat> cameradata(5);
+	cv::cuda::GpuMat res;
 
 	std::string win1{"Cam0"};
 	std::string win2{"Cam1"};
-	std::string win3{"Cam2"};
-	std::string win4{"Cam3"};
 
         //cv::VideoWriter invid("stream.avi", cv::VideoWriter::fourcc('D', 'I', 'V', 'X'), 20, cameraSize);
 	
 	//cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 	//cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 
-	SVStitcher sv;
+	SVStitcher sv(4, 0.5);
 	
 	auto lastTick = std::chrono::high_resolution_clock::now();
 	for (; !finish; ){			
@@ -87,7 +87,7 @@ int CameraCycle()
 		if (!sv.getInit()){
 			std::vector<cv::cuda::GpuMat> datas {cv::cuda::GpuMat(), frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame, frames[3].gpuFrame};
 			//auto init = sv.init(datas);
-			auto init = sv.initFromFile("campar/", datas, true);
+			auto init = sv.initFromFile("campar/", datas, false);
 #ifdef GL_YES
 			if (init){
 			    const auto tex_size = sv.getResSize();
@@ -97,10 +97,9 @@ int CameraCycle()
 #endif
 		}
 		else{
-		    std::vector<cv::cuda::GpuMat> datas {cv::cuda::GpuMat(), frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame, frames[3].gpuFrame};
-		    cv::cuda::GpuMat res;
-
-		    sv.stitch(datas, res);
+		    for (auto i = 1; i <= frames.size(); ++i)
+		      cameradata[i] = frames[i -1].gpuFrame;
+		    sv.stitch(cameradata, res);
 		    //cv::imshow(win1, res);
 #ifdef GL_YES
 		    bool okRender = dp->render(res);

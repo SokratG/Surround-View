@@ -1,4 +1,4 @@
-#include "CudaOGL.hpp"
+#include "SVCudaOGL.hpp"
 
 
 

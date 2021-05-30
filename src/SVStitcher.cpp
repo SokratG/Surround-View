@@ -1,7 +1,7 @@
 #include <iostream>
-#include "AutoCalib.hpp"
-#include "SeamDetection.hpp"
-#include "SurroundView.hpp"
+#include "SVAutoCalib.hpp"
+#include "SVSeamDetection.hpp"
+#include "SVStitcher.hpp"
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudawarping.hpp>
@@ -11,11 +11,8 @@
 #include <omp.h>
 
 static auto isstart = false;
-static constexpr auto padding_warp = 20;
 
 
-// !!!!!!!!!
-#include <opencv2/highgui.hpp>
 bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	
 	if (isInit){
@@ -28,12 +25,6 @@ bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	    return false;
 	}
 
-	/*
-	    1. Split rear veiwing to two images (+)
-	    2. Autocalibrate all images
-	    3. Find seams
-	    4. Stitch
-	*/
 	std::vector<cv::cuda::GpuMat> imgs_ = imgs;
 
 	splitRearView(imgs_);
@@ -43,6 +34,7 @@ bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	std::vector<cv::Mat> cpu_imgs(imgs_num);
 	for (size_t i = 0; i < imgs_num; ++i){
 	    imgs_[i].download(cpu_imgs[i]);
+	    cv::resize(cpu_imgs[i], cpu_imgs[i], cv::Size(), scale_factor, scale_factor);
 	}
 
 
@@ -57,7 +49,7 @@ bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	Ks_f = autcalib.getIntCameraParam();
 
 
-	SVSeamDetector smd(imgs_num, warped_image_scale);
+	SVSeamDetector smd(imgs_num, warped_image_scale, scale_factor);
 	res = smd.init(cpu_imgs, Ks_f, R);
 	if (!res){
 	    std::cerr << "Error can't seam masks for images...\n";
@@ -70,7 +62,7 @@ bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	texYmap = smd.getYmap();
 
 	if (cuBlender.get() == nullptr){
-	    cuBlender = std::make_shared<CUDAMultiBandBlender>(numbands);
+	    cuBlender = std::make_shared<SVMultiBandBlender>(numbands);
 	    cuBlender->prepare(corners, sizes, gpu_seam_masks);
 	}
 
@@ -115,6 +107,7 @@ bool SVStitcher::initFromFile(const std::string& dirpath, const std::vector<cv::
     std::vector<cv::Mat> cpu_imgs(imgs_num);
     for (size_t i = 0; i < imgs_num; ++i){
         imgs_[i].download(cpu_imgs[i]);
+        cv::resize(cpu_imgs[i], cpu_imgs[i], cv::Size(), scale_factor, scale_factor);
     }
 
 
@@ -126,7 +119,7 @@ bool SVStitcher::initFromFile(const std::string& dirpath, const std::vector<cv::
             return false;
         }
 
-        SVSeamDetector smd(imgs_num, warped_image_scale);
+        SVSeamDetector smd(imgs_num, warped_image_scale, scale_factor);
         res = smd.init(cpu_imgs, Ks_f, R);
         if (!res){
             std::cerr << "Error can't seam masks for images...\n";
@@ -143,7 +136,7 @@ bool SVStitcher::initFromFile(const std::string& dirpath, const std::vector<cv::
 
 
     if (cuBlender.get() == nullptr){
-        cuBlender = std::make_shared<CUDAMultiBandBlender>(numbands);
+        cuBlender = std::make_shared<SVMultiBandBlender>(numbands);
         cuBlender->prepare(corners, sizes, gpu_seam_masks);
     }
 
@@ -214,6 +207,64 @@ bool SVStitcher::getDataFromFile(const std::string& dirpath, const bool use_file
 }
 
 
+void SVStitcher::detectCorners(const cv::Mat& src, cv::Point& tl, cv::Point& bl, cv::Point& tr, cv::Point& br)
+{
+      std::vector<std::vector<cv::Point>> cnts;
+
+      cv::findContours(src, cnts, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
+
+      const auto height_ = src.rows;
+
+      tl = cnts[0][0];
+      tr = cv::Point(0, 0);
+      bl = cnts[0][0];
+      br = cnts[0][0];
+      const auto x_constrain_tl = sizes[sizes.size() - 1].width >> 1;
+      /* find bottom-left and bottorm-right corners (or if another warping tl and tr)*/
+      auto idx_tl = 0, idx_tr = 0, tot_idx = 0;
+      for(const auto& pcnt : cnts){
+          for (const auto& pt : pcnt){
+              if (bl.x >= pt.x){
+                bl = pt;
+              }
+
+              if (br.x < pt.x ){
+                br = pt;
+                idx_tr = tot_idx;
+              }
+
+              tot_idx += 1;
+              if (pt.x == x_constrain_tl && pt.y < (height_ / 2))
+                idx_tl = tot_idx;
+          }
+      }
+
+
+      /* find top-right*/
+      for(auto i = idx_tr; i < cnts[0].size() - 1; ++i){
+          const auto& pt = cnts[0][i];
+          const auto& next_pt = cnts[0][i + 1];
+          auto dy = next_pt.y - pt.y;
+          if (br.y > pt.y && dy == 0){
+            tr = pt;
+            break;
+          }
+      }
+
+      /* find top-left*/
+      for(auto i = idx_tl; i < cnts[0].size() - 1; ++i){
+          const auto& pt = cnts[0][i];
+          const auto& next_pt = cnts[0][i + 1];
+          auto dx = cnts[0][i + 2].x - next_pt.x;
+          auto dy = next_pt.y - pt.y;
+          if (dx == 0 && dy == 0){
+            tl = pt;
+            break;
+          }
+      }
+
+}
+
 bool SVStitcher::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 {
           cv::cuda::GpuMat gpu_result, warp_s, warp_img;
@@ -232,68 +283,15 @@ bool SVStitcher::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 
           //result.convertTo(result, CV_8U);
 
-
           cv::threshold(thresh, thresh, 1, 255, cv::THRESH_BINARY);
 
-          std::vector<std::vector<cv::Point>> cnts;
+          cv::Point tl, bl, tr, br;
+          detectCorners(thresh, tl, bl, tr, br);
 
-          cv::findContours(thresh, cnts, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
-
-
-          auto width_ = result.cols;
-          auto height_ = result.rows;
-
-          cv::Point tl = cnts[0][0];
-          cv::Point tr(0, 0);
-          cv::Point bl = cnts[0][0];
-          cv::Point br = cnts[0][0];
-          const auto x_constrain_tl = sizes[sizes.size() - 1].width >> 1;
-          /* find bottom-left and bottorm-right corners (or if another warping tl and tr)*/
-          auto idx_tl = 0, idx_tr = 0, tot_idx = 0;        
-          for(const auto& pcnt : cnts){
-              for (const auto& pt : pcnt){
-                  if (bl.x >= pt.x){
-                    bl = pt;
-                  }
-
-                  if (br.x < pt.x ){
-                    br = pt;
-                    idx_tr = tot_idx;
-                  }
-
-                  tot_idx += 1;
-                  if (pt.x == x_constrain_tl && pt.y < (height_ / 2))
-                    idx_tl = tot_idx;
-              }
-          }
-
-
-          /* find top-right*/
-          for(auto i = idx_tr; i < cnts[0].size() - 1; ++i){
-              const auto& pt = cnts[0][i];
-              const auto& next_pt = cnts[0][i + 1];
-              auto dy = next_pt.y - pt.y;
-              if (br.y > pt.y && dy == 0){
-                tr = pt;
-                break;
-              }
-          }
-
-          /* find top-left*/
-          for(auto i = idx_tl; i < cnts[0].size() - 1; ++i){
-              const auto& pt = cnts[0][i];
-              const auto& next_pt = cnts[0][i + 1];
-              auto dx = cnts[0][i + 2].x - next_pt.x;
-              auto dy = next_pt.y - pt.y;
-              if (dx == 0 && dy == 0){
-                tl = pt;
-                break;
-              }
-          } 
-
+          const auto height_ = result.rows;
+          const auto width_ = result.cols;
           resSize = result.size();
           /* add offset of coordinate corner points due to seam last frame */
-
 
           save_warpptr("corner_warppts.yaml", resSize, tl, tr, bl, br);
 
@@ -342,11 +340,13 @@ bool SVStitcher::stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& b
 #endif
     for(size_t i = 0; i < imgs_num; ++i){
 
-          cv::cuda::remap(imgs[i], gpuimg_warped, texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, cv::Scalar(), streamObj);
+          cv::cuda::resize(imgs[i], gpuimg_warped_s, cv::Size(), scale_factor, scale_factor, cv::INTER_NEAREST, cycleStreamObj);
 
-          gpuimg_warped.convertTo(gpuimg_warped_s, CV_16S, streamObj);
+          cv::cuda::remap(gpuimg_warped_s, gpuimg_warped, texXmap[i], texYmap[i], cv::INTER_NEAREST, cv::BORDER_REFLECT, cv::Scalar(), cycleStreamObj);
 
-          cuBlender->feed(gpuimg_warped_s, gpu_seam_masks[i], i, streamObj);
+          gpuimg_warped.convertTo(gpuimg_warped_s, CV_16S, cycleStreamObj);
+
+          cuBlender->feed(gpuimg_warped_s, gpu_seam_masks[i], i, cycleStreamObj);
     }
 
     cuBlender->blend(stitch, streamObj);
@@ -363,7 +363,7 @@ void SVStitcher::splitRearView(std::vector<cv::cuda::GpuMat>& imgs)
 {
     auto last_idx = imgs.size() - 1;
     auto rear_width = imgs[last_idx].cols;
-    auto rear_half_width = rear_width / 2 + 1;
+    auto rear_half_width = (rear_width >> 1) + 1;
     auto rear_height = imgs[last_idx].rows;
     cv::cuda::GpuMat half_rear = imgs[last_idx](cv::Range(0, rear_height), cv::Range(rear_half_width, rear_width));
     imgs[0] = imgs[last_idx](cv::Range(0, rear_height), cv::Range(0, rear_half_width));

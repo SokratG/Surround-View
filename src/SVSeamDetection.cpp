@@ -1,4 +1,4 @@
-#include <SeamDetection.hpp>
+#include <SVSeamDetection.hpp>
 #include <opencv2/stitching/detail/exposure_compensate.hpp>
 #include <opencv2/stitching/detail/seam_finders.hpp>
 #include <opencv2/stitching/warpers.hpp>
@@ -61,14 +61,17 @@ bool SVSeamDetector::warpedImage(const std::vector<cv::Mat>& imgs, const std::ve
 
     cv::Ptr<cv::WarperCreator> warper_creator = cv::makePtr<cv::SphericalWarper>();
 
-    cv::Ptr<cv::detail::RotationWarper> warper = warper_creator->create(static_cast<float>(warped_image_scale * work_scale));
+    cv::Ptr<cv::detail::RotationWarper> warper = warper_creator->create(static_cast<float>(work_scale * warped_image_scale));
 
-
+    cv::Mat_<float> K_;
     for(size_t i = 0; i < imgs_num; ++i){
-          corners[i] = warper->warp(imgs[i], Ks_f[i], R[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, imgs_warped[i]);
+          Ks_f[i].copyTo(K_);
+          K_(0,0) *= work_scale; K_(0,2) *= work_scale;
+          K_(1,1) *= work_scale; K_(1,2) *= work_scale;
+          corners[i] = warper->warp(imgs[i], K_, R[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, imgs_warped[i]);
           sizes[i] = imgs_warped[i].size();
-          warper->warp(masks[i], Ks_f[i], R[i], cv::INTER_NEAREST, cv::BORDER_CONSTANT, masks_warped_[i]);
-          warper->buildMaps(imgs[i].size(), Ks_f[i], R[i], xmap, ymap);
+          warper->warp(masks[i], K_, R[i], cv::INTER_NEAREST, cv::BORDER_CONSTANT, masks_warped_[i]);
+          warper->buildMaps(imgs[i].size(), K_, R[i], xmap, ymap);
           texXmap[i].upload(xmap);
           texYmap[i].upload(ymap);
     }
