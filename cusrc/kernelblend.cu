@@ -50,6 +50,7 @@ extern "C" void normalizeUsingWeightMapGpu32F_Async(const cv::cuda::PtrStepf wei
 
 
 // ------------------------------- CUDABlender --------------------------------
+// take from - https://github.com/Avandrea/OpenCV-BlenderGPU
 __global__ void feedCUDA_kernel(uchar* img, uchar* mask, uchar* dst, uchar* dst_mask, int dx, int dy, int width, int height, int img_step, int dst_step, int mask_step, int mask_dst_step)
 {
 	int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -143,10 +144,10 @@ extern "C" void weightBlendCUDA(const cv::cuda::PtrStep<short> src, const cv::cu
 
 extern "C" void weightBlendCUDA_Async(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
     cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, const cv::Size& img_size,
-    int dx, int dy, cudaStream_t stream_dst, cudaStream_t stream_dst_weight)
+    int dx, int dy, cudaStream_t stream_dst)
 {
       cudaStreamAttachMemAsync(stream_dst, dst, 0 , cudaMemAttachGlobal);
-      cudaStreamAttachMemAsync(stream_dst_weight, dst_weight, 0 , cudaMemAttachGlobal);
+      cudaStreamAttachMemAsync(stream_dst, dst_weight, 0 , cudaMemAttachGlobal);
 
       dim3 threads(32, 32);
       dim3 grid(divUp(img_size.width, threads.x), divUp(img_size.height, threads.y));
@@ -189,10 +190,10 @@ extern "C" void addSrcWeightGpu32F(const cv::cuda::PtrStep<short> src, const cv:
 
 extern "C" void addSrcWeightGpu32F_Async(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
                         cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, cv::Rect &rc,
-                        cudaStream_t stream_dst, cudaStream_t stream_dst_weight)
+                        cudaStream_t stream_dst)
 {
     cudaStreamAttachMemAsync(stream_dst, dst, 0 , cudaMemAttachGlobal);
-    cudaStreamAttachMemAsync(stream_dst_weight, dst_weight, 0 , cudaMemAttachGlobal);
+    cudaStreamAttachMemAsync(stream_dst, dst_weight, 0 , cudaMemAttachGlobal);
 
     dim3 threads(16, 16);
     dim3 blocks(divUp(rc.width, threads.x), divUp(rc.height, threads.y));

@@ -163,9 +163,6 @@ void gpuConvertUYVY2RGB_opt(uchar* src, uchar* d_src, uchar* dst, uint width, ui
 
 	cudaStreamAttachMemAsync(stream, dst, 0 , cudaMemAttachGlobal);
 
-	//uint blockSize = 1024;
-	//uint numBlocks = (width / 2 + blockSize - 1) / blockSize;
-	//gpuConvertUYVY2RGB_kernel <<<numBlocks, blockSize >>>(d_src, dst, width, height);
 
 	const dim3 block(16, 16);
 	const dim3 grid(divUp(width/2, block.x), divUp(height, block.y));

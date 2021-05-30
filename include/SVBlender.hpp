@@ -85,14 +85,16 @@ protected:
 
 private:
         cudaStream_t _cudaStreamDst;
-        cudaStream_t _cudaStreamDst_weight;
 public:
         SVMultiBandBlender(const int numbands_ = 1);
         ~SVMultiBandBlender();
 
         void prepare(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes, const std::vector<cv::cuda::GpuMat>& masks);
 
-        void feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, const int idx, cv::cuda::Stream& streamObj = cv::cuda::Stream::Null());
+        /* _mask not using */
+        void feed(const cv::cuda::GpuMat& _img, const cv::cuda::GpuMat& _mask, const int idx, cv::cuda::Stream& streamObj = cv::cuda::Stream::Null());
+
+        void feed(const cv::cuda::GpuMat& _img, const int idx, cv::cuda::Stream& streamObj = cv::cuda::Stream::Null());
 
         void blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj = cv::cuda::Stream::Null());
 
@@ -102,11 +104,11 @@ private:
         void prepare_pyr(const cv::Rect& dst_roi);
         void prepare_roi(const std::vector<cv::Point> &corners, const std::vector<cv::Size> &sizes);
 protected:
+        cv::cuda::Stream loopStreamObj;
         cv::cuda::GpuMat dst_mask_;
-        cv::Rect dst_roi_, dst_roi_final_;
+        cv::Rect dst_roi_, dst_roi_final_, dst_rc_;
         std::vector<cv::cuda::GpuMat> gpu_dst_pyr_laplace_;
         std::vector<cv::cuda::GpuMat> gpu_dst_band_weights_;
-        std::vector<cv::cuda::GpuMat> gpu_imgs_with_border_;
         std::vector<Border> gpu_imgs_borders_;
         std::vector<TLBR> gpu_imgs_corners_;
         std::vector<std::vector<cv::cuda::GpuMat>> gpu_weight_pyr_gauss_vec_;

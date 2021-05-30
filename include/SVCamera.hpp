@@ -24,6 +24,7 @@ using uchar = unsigned char;
 
 #define BUFFER_MAP
 #define MMAP_BUFFERS_COUNT 4
+#define CAM_NUMS 4
 
 class CameraInfo
 {
@@ -101,16 +102,16 @@ public:
 		cv::cuda::GpuMat remapX, remapY;
 		cv::Rect roiFrame;
 	} CameraUndistortData; 
-	std::array<cv::Mat, 4> Ks;
+        std::array<cv::Mat, CAM_NUMS> Ks;
 private:
 
 	cv::Size frameSize{CAMERA_WIDTH, CAMERA_HEIGHT};
-	std::array<CameraInfo, 4> _cams = {{CameraInfo("/dev/video0", frameSize),
+        std::array<CameraInfo, CAM_NUMS> _cams = {{CameraInfo("/dev/video0", frameSize),
 					    CameraInfo("/dev/video1", frameSize),
 					    CameraInfo("/dev/video2", frameSize),
 					    CameraInfo("/dev/video3", frameSize)}};
-	std::array<InternalCameraParams, 4> camIparams;
-	std::array<CameraUndistortData, 4> undistFrames;
+        std::array<InternalCameraParams, CAM_NUMS> camIparams;
+        std::array<CameraUndistortData, CAM_NUMS> undistFrames;
 	bool cuda_zero_copy = true;
 
 public:
@@ -122,7 +123,7 @@ public:
         int init(const std::string& param_filepath, const cv::Size& calibSize, const cv::Size& undistSize, const bool useUndist=false);
 	bool startStream();
 	bool stopStream();
-	bool capture(std::array<Frame, 4>& frames);	
+        bool capture(std::array<Frame, CAM_NUMS>& frames);
 	
 	void close(){
                 for (auto i = 0; i < _cams.size(); ++i){
@@ -130,11 +131,10 @@ public:
                 }
 		for (auto& cam : _cams)
 			cam.stopStream();
-                for (auto& _cudaStream : _cudaStreams){
-                    if (_cudaStream)
-                            cudaStreamDestroy(_cudaStream);
-                    _cudaStream = NULL;
-                }
+
+                if (_cudaStream)
+                        cudaStreamDestroy(_cudaStream);
+                _cudaStream = NULL;
 	}
 public:
 	const CameraInfo& getCamera(int index) const { return _cams[index]; }
@@ -147,7 +147,8 @@ public:
 	}
 	
 private:
-        std::array<cudaStream_t, 4> _cudaStreams {{NULL}};
+        std::array<v4l2_buffer, CAM_NUMS> buffs{};
+        cudaStream_t _cudaStream {NULL};
         cv::cuda::Stream cudaStreamObj{cv::cuda::Stream::Null()};
         uchar* d_src[4];
 };

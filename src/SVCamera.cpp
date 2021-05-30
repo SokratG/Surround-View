@@ -498,18 +498,23 @@ int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& 
 		return -1;
 	
 
-	for (auto& _cudaStream : _cudaStreams){
-	    if (cudaStreamCreate(&_cudaStream) != cudaError::cudaSuccess){
-		    _cudaStream = NULL;
-		    LOG_ERROR("SyncedCameraSource: Failed to create cuda stream");
-	    }
+
+	if (cudaStreamCreate(&_cudaStream) != cudaError::cudaSuccess){
+		_cudaStream = NULL;
+		LOG_ERROR("SyncedCameraSource: Failed to create cuda stream");
 	}
-	
+
 	size_t planeSize = undistSize.width * undistSize.height * sizeof(uchar);
 	for (auto i = 0; i < _cams.size(); ++i){
 	    cudaMalloc(&d_src[i], planeSize * 2);
 	}
 
+	for(size_t i = 0; i < buffs.size(); ++i){
+	      auto& buff = buffs[i];
+	      std::memset(&buff, 0, sizeof(v4l2_buffer));
+	      buff.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	      buff.memory = V4L2_MEMORY_MMAP;
+	}
 
 	if (_undistort){
 	      for (size_t i = 0; i < _cams.size(); ++i){
@@ -596,13 +601,9 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 		
 
 	// dequeue buffers all cameras
-	std::array<v4l2_buffer, 4> buffs{};
+
 	for(size_t i = 0; i < _cams.size(); ++i){
 	      auto& buff = buffs[i];
-	      std::memset(&buff, 0, sizeof(v4l2_buffer));
-	      buff.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	      buff.memory = V4L2_MEMORY_MMAP;
-
 	      const auto& c = _cams[i];
 	      auto fd = c.fd;
 	      if (xioctl(fd, VIDIOC_DQBUF, &buff) < 0){
@@ -616,14 +617,14 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 
 	// do processing
 #ifndef NO_OMP
-	#pragma omp parallel for default(none) shared(buffs, frames)
+	#pragma omp parallel for default(none) shared(frames)
 #endif
 	for(size_t i = 0; i < _cams.size(); ++i){
 		auto& buff = buffs[i];
 		auto& dataBuffer = _cams[i].buffers[buff.index];
 		auto* cudaBuffer = _cams[i].cuda_out_buffer;
 
-		gpuConvertUYVY2RGB_opt((uchar*)dataBuffer.start, d_src[i], cudaBuffer, frameSize.width, frameSize.height, _cudaStreams[i]);
+		gpuConvertUYVY2RGB_opt((uchar*)dataBuffer.start, d_src[i], cudaBuffer, frameSize.width, frameSize.height, _cudaStream);
 
 		const auto uData = std::move(cv::cuda::GpuMat(frameSize, CV_8UC3, cudaBuffer));
 
@@ -649,12 +650,12 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 	}
 
 #ifdef NO_COMPILE
-	for(auto& cds : cudaStreamObj)
-	    cds.waitForCompletion();
-	for(auto& cs : _cudaStreams){
-	    if (_cudaStream)
-		    cudaStreamSynchronize(_cudaStream);
-	}
+
+	cds.waitForCompletion();
+
+	if (_cudaStream)
+		cudaStreamSynchronize(_cudaStream);
+
 #endif
 	return true;
 }

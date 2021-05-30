@@ -40,7 +40,7 @@ private:
         cv::Range col_range;
         // --------------
         cv::cuda::Stream streamObj;
-        cv::cuda::Stream cycleStreamObj;
+        cv::cuda::Stream loopStreamObj;
         std::shared_ptr<SVMultiBandBlender> cuBlender;
 
 private:

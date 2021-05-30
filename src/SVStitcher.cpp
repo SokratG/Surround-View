@@ -340,13 +340,13 @@ bool SVStitcher::stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& b
 #endif
     for(size_t i = 0; i < imgs_num; ++i){
 
-          cv::cuda::resize(imgs[i], gpuimg_warped_s, cv::Size(), scale_factor, scale_factor, cv::INTER_NEAREST, cycleStreamObj);
+          cv::cuda::resize(imgs[i], gpuimg_warped_s, cv::Size(), scale_factor, scale_factor, cv::INTER_NEAREST, loopStreamObj);
 
-          cv::cuda::remap(gpuimg_warped_s, gpuimg_warped, texXmap[i], texYmap[i], cv::INTER_NEAREST, cv::BORDER_REFLECT, cv::Scalar(), cycleStreamObj);
+          cv::cuda::remap(gpuimg_warped_s, gpuimg_warped, texXmap[i], texYmap[i], cv::INTER_NEAREST, cv::BORDER_REFLECT, cv::Scalar(), loopStreamObj);
 
-          gpuimg_warped.convertTo(gpuimg_warped_s, CV_16S, cycleStreamObj);
+          gpuimg_warped.convertTo(gpuimg_warped_s, CV_16S, loopStreamObj);
 
-          cuBlender->feed(gpuimg_warped_s, gpu_seam_masks[i], i, cycleStreamObj);
+          cuBlender->feed(gpuimg_warped_s, i, loopStreamObj);
     }
 
     cuBlender->blend(stitch, streamObj);

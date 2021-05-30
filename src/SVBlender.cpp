@@ -18,13 +18,13 @@ extern "C" {
 	    cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, const cv::Size& img_size, int dx, int dy);
 	void weightBlendCUDA_Async(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
 	    cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, const cv::Size& img_size, int dx, int dy,
-				   cudaStream_t stream_dst, cudaStream_t stream_dst_weight);
+				   cudaStream_t stream_dst);
 
 	void addSrcWeightGpu32F(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
 				cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, cv::Rect &rc);
 	void addSrcWeightGpu32F_Async(const cv::cuda::PtrStep<short> src, const cv::cuda::PtrStepf src_weight,
 				cv::cuda::PtrStep<short> dst, cv::cuda::PtrStepf dst_weight, cv::Rect &rc,
-				cudaStream_t stream_dst, cudaStream_t stream_dst_weight);
+				cudaStream_t stream_dst);
 
 	void normalizeUsingWeightMapGpu32F(const cv::cuda::PtrStepf weight, cv::cuda::PtrStep<short> src,
 						      const int width, const int height);
@@ -170,7 +170,7 @@ void SVFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, con
 	createWeightMap(_mask, *weight_map_, streamObj);
 
 	if (_cudaStreamDst && _cudaStreamDst_weight)
-	    weightBlendCUDA_Async(_img, *weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy, _cudaStreamDst, _cudaStreamDst_weight);
+	    weightBlendCUDA_Async(_img, *weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy, _cudaStreamDst);
 	else
 	    weightBlendCUDA(_img, *weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy);
 
@@ -193,7 +193,7 @@ void SVFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, con
 	}
 
 	if (_cudaStreamDst && _cudaStreamDst_weight)
-	    weightBlendCUDA_Async(_img, *weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy, _cudaStreamDst, _cudaStreamDst_weight);
+	    weightBlendCUDA_Async(_img, *weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy, _cudaStreamDst);
 	else
 	    weightBlendCUDA(_img, *weight_map_, dst_, dst_weight_map_, _img.size(), dx, dy);
 
@@ -242,16 +242,12 @@ SVMultiBandBlender::SVMultiBandBlender(const int numbands_) : numbands(numbands_
 
       if (cudaStreamCreate(&_cudaStreamDst) != cudaError::cudaSuccess)
               _cudaStreamDst = NULL;
-      if (cudaStreamCreate(&_cudaStreamDst_weight) != cudaError::cudaSuccess)
-              _cudaStreamDst_weight = NULL;
 }
 
 SVMultiBandBlender::~SVMultiBandBlender()
 {
       if(_cudaStreamDst)
          cudaStreamDestroy(_cudaStreamDst);
-      if(_cudaStreamDst_weight)
-         cudaStreamDestroy(_cudaStreamDst_weight);
 }
 
 
@@ -294,8 +290,6 @@ void SVMultiBandBlender::prepare_roi(const std::vector<cv::Point> &corners, cons
 	    gpu_imgs_borders_.emplace_back(top, left, bottom, right);
 	    gpu_imgs_corners_.emplace_back(tl_new, br_new);
 
-
-	    gpu_imgs_with_border_.push_back(cv::cuda::GpuMat());
 	    gpu_weight_pyr_gauss_vec_.push_back(std::vector<cv::cuda::GpuMat>(numbands + 1));
 	    gpu_src_pyr_laplace_vec_.push_back(std::vector<cv::cuda::GpuMat>(numbands + 1));
 	    gpu_ups_.push_back(std::vector<cv::cuda::GpuMat>(numbands));
@@ -310,6 +304,7 @@ void SVMultiBandBlender::prepare_roi(const std::vector<cv::Point> &corners, cons
 void SVMultiBandBlender::prepare_pyr(const cv::Rect& dst_roi)
 {
 	dst_roi_final_ = dst_roi;
+	dst_rc_ = cv::Rect(0, 0, dst_roi_final_.width, dst_roi_final_.height);
 	dst_roi_ = dst_roi;
 	dst_roi_.width += ((1 << numbands) - dst_roi.width % (1 << numbands)) % (1 << numbands);
 	dst_roi_.height += ((1 << numbands) - dst_roi.height % (1 << numbands)) % (1 << numbands);
@@ -337,7 +332,6 @@ void SVMultiBandBlender::prepare_pyr(const cv::Rect& dst_roi)
 	    gpu_dst_band_weights_[i].setTo(0);
 	}
 
-
 }
 
 
@@ -361,16 +355,20 @@ void SVMultiBandBlender::prepare(const std::vector<cv::Point> &corners, const st
 }
 
 
-void SVMultiBandBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, const int idx, cv::cuda::Stream& streamObj)
+void SVMultiBandBlender::feed(const cv::cuda::GpuMat& _img, const cv::cuda::GpuMat& _mask, const int idx, cv::cuda::Stream& streamObj)
+{
+     CV_Assert(_mask.type() == CV_8U);
+     feed(_img, idx, streamObj);
+}
+
+void SVMultiBandBlender::feed(const cv::cuda::GpuMat& _img, const int idx, cv::cuda::Stream& streamObj)
 {
       CV_Assert(_img.type() == CV_16SC3);
-      CV_Assert(_mask.type() == CV_8U);
       CV_Assert(idx >= 0);
 
-      cv::cuda::copyMakeBorder(_img, gpu_imgs_with_border_[idx], gpu_imgs_borders_[idx].top, gpu_imgs_borders_[idx].bottom,
+      cv::cuda::copyMakeBorder(_img, gpu_src_pyr_laplace_vec_[idx][0], gpu_imgs_borders_[idx].top, gpu_imgs_borders_[idx].bottom,
                                gpu_imgs_borders_[idx].left, gpu_imgs_borders_[idx].right, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
 
-      gpu_imgs_with_border_[idx].convertTo(gpu_src_pyr_laplace_vec_[idx][0], CV_16S);
 
       for(auto i = 0; i < numbands; ++i)
           cv::cuda::pyrDown(gpu_src_pyr_laplace_vec_[idx][i], gpu_src_pyr_laplace_vec_[idx][i + 1], streamObj);
@@ -395,17 +393,17 @@ void SVMultiBandBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, c
            auto& weight_pyr_gauss = gpu_weight_pyr_gauss_vec_[idx][i];
            auto dst_band_weight = gpu_dst_band_weights_[i](rc);
 
-           addSrcWeightGpu32F_Async(src_pyr_laplace, weight_pyr_gauss, dst_pyr_laplace, dst_band_weight, rc, _cudaStreamDst, _cudaStreamDst_weight);
+           addSrcWeightGpu32F_Async(src_pyr_laplace, weight_pyr_gauss, dst_pyr_laplace, dst_band_weight, rc, _cudaStreamDst);
 
-           // dicrease size by 2
+           // div size by 2
            x_tl >>= 1; y_tl >>= 1;
            x_br >>= 1; y_br >>= 1;
       }
 }
 
+
 void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj)
 {
-    cv::Rect dst_rc(0, 0, dst_roi_final_.width, dst_roi_final_.height);
 
     for (auto i = 0; i <= numbands; ++i){
         auto* dst_i = &gpu_dst_pyr_laplace_[i];
@@ -420,11 +418,11 @@ void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask
     }
 
     cv::cuda::GpuMat mask;
-    cv::cuda::compare(gpu_dst_band_weights_[0](dst_rc), WEIGHT_EPS, dst_mask_, cv::CMP_GT, streamObj);
+    cv::cuda::compare(gpu_dst_band_weights_[0](dst_rc_), WEIGHT_EPS, dst_mask_, cv::CMP_GT, streamObj);
     cv::cuda::compare(dst_mask_, 0, mask, cv::CMP_EQ, streamObj);
 
-    gpu_dst_pyr_laplace_[0](dst_rc).setTo(cv::Scalar::all(0), mask, streamObj);
-    gpu_dst_pyr_laplace_[0](dst_rc).convertTo(dst, CV_8U, streamObj);
+    gpu_dst_pyr_laplace_[0](dst_rc_).setTo(cv::Scalar::all(0), mask, streamObj);
+    gpu_dst_pyr_laplace_[0](dst_rc_).convertTo(dst, CV_8U, streamObj);
     dst_mask_.copyTo(dst_mask, streamObj);
 
 
@@ -433,7 +431,7 @@ void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask
 #endif
     for(auto i = 0; i < numbands+1; ++i){
         gpu_dst_band_weights_[i].setTo(0);
-        gpu_dst_pyr_laplace_[i].setTo(cv::Scalar::all(0));
+        gpu_dst_pyr_laplace_[i].setTo(cv::Scalar::all(0), loopStreamObj);
     }
 
     dst_mask_.setTo(cv::Scalar::all(0), streamObj);
@@ -443,10 +441,9 @@ void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask
 
 
 
-
+#define ACCELERATE_USE
 void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::Stream& streamObj)
 {
-    cv::Rect dst_rc(0, 0, dst_roi_final_.width, dst_roi_final_.height);
 
     for (auto i = 0; i <= numbands; ++i){
         auto* dst_i = &gpu_dst_pyr_laplace_[i];
@@ -460,12 +457,15 @@ void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::Stream& streamOb
         cv::cuda::add(gpu_ups_[last_idx][numbands-i], gpu_dst_pyr_laplace_[i - 1], gpu_dst_pyr_laplace_[i - 1], cv::noArray(), -1, streamObj);
     }
 
+    /* this remove some blur around already stitched picture, but if use warp perspective and ROI, we can skip this part */
+#ifndef ACCELERATE_USE
     cv::cuda::GpuMat mask;
-    cv::cuda::compare(gpu_dst_band_weights_[0](dst_rc), WEIGHT_EPS, dst_mask_, cv::CMP_GT, streamObj);
+    cv::cuda::compare(gpu_dst_band_weights_[0](dst_rc_), WEIGHT_EPS, dst_mask_, cv::CMP_GT, streamObj);
     cv::cuda::compare(dst_mask_, 0, mask, cv::CMP_EQ, streamObj);
 
-    gpu_dst_pyr_laplace_[0](dst_rc).setTo(cv::Scalar::all(0), mask, streamObj);
-    gpu_dst_pyr_laplace_[0](dst_rc).convertTo(dst, CV_8U, streamObj);
+    gpu_dst_pyr_laplace_[0](dst_rc_).setTo(cv::Scalar::all(0), mask, streamObj);
+#endif
+    gpu_dst_pyr_laplace_[0](dst_rc_).convertTo(dst, CV_8U, streamObj);
 
 
 #ifndef NO_OMP
@@ -473,7 +473,7 @@ void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::Stream& streamOb
 #endif
     for(auto i = 0; i < numbands+1; ++i){
         gpu_dst_band_weights_[i].setTo(0);
-        gpu_dst_pyr_laplace_[i].setTo(cv::Scalar::all(0));
+        gpu_dst_pyr_laplace_[i].setTo(cv::Scalar::all(0), loopStreamObj);
     }
 
 
