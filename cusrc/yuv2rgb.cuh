@@ -1,8 +1,6 @@
 #pragma once
 #include <cuda_runtime.h>
 
-
-
 typedef unsigned char uchar;
 typedef unsigned int uint;
 

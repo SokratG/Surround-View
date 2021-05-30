@@ -1,6 +1,5 @@
 #include <cuda_runtime.h>
 #include <cuda.h>
-#include <stdio.h>
 #include <device_launch_parameters.h>
 #include <opencv2/core/cuda/common.hpp>
 #include <opencv2/core/types.hpp>
