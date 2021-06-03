@@ -82,8 +82,7 @@ public:
 	}
         ~SVDisplayView(){glfwTerminate();}
 
-        bool init(const int32 wnd_width, const int32 wnd_height,
-                  const int32 tex_width, const int32 tex_height, std::shared_ptr<SVRender> scene_view){
+        bool init(const int32 wnd_width, const int32 wnd_height, std::shared_ptr<SVRender> scene_view){
             if (isInit)
                     return isInit;
             this->width = wnd_width;
@@ -110,7 +109,7 @@ public:
             glfwMakeContextCurrent(window);
 
             if (!disp_view->getInit())
-                disp_view->init(tex_width, tex_height, aspect_ratio);
+                disp_view->init();
 
             glEnable(GL_DEPTH_TEST);
             //glDepthFunc(GL_LEQUAL);

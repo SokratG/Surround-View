@@ -22,7 +22,7 @@ void SVRender::render(const Camera& cam, const cv::cuda::GpuMat& frame)
     glBindFramebuffer(GL_FRAMEBUFFER, 0); // bind default framebuffer
     glDisable(GL_DEPTH_TEST);
 
-    drawQuad(cam);
+    drawScreen(cam);
 
     // unbound
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -30,22 +30,18 @@ void SVRender::render(const Camera& cam, const cv::cuda::GpuMat& frame)
 }
 
 
-bool SVRender::init(const int32 tex_width, const int32 tex_height, const float aspect_ratio_)
+bool SVRender::init()
 {
     if (isInit)
             return isInit;
 
-    /* width and height texture frame from gpuMat */
-    this->tex_width = tex_width;
-    this->tex_height = tex_height;
-
-    aspect_ratio = aspect_ratio_;
+    aspect_ratio = static_cast<float>(wnd_width) / wnd_height;
 
     isInit = initBowl();
     if (!isInit)
       return false;
 
-    isInit = initQuad();
+    isInit = initQuadRender();
     if (!isInit)
       return false;
 
@@ -57,12 +53,10 @@ bool SVRender::init(const int32 tex_width, const int32 tex_height, const float a
 void SVRender::texturePrepare(const cv::cuda::GpuMat& frame)
 {
     if (!texReady){
-        texture.create(frame.size(), cv::ogl::Texture2D::Format::RGB, false);
+        texReady = cuOgl.init(frame);
         glBindTexture(GL_TEXTURE_2D, 0);
-        texReady = true;
     }
-
-    texture.copyFrom(frame);
+    auto ok = cuOgl.copyFrom(frame);
 }
 
 
@@ -106,7 +100,7 @@ void SVRender::drawModel(const Camera& cam)
 }
 
 
-void SVRender::drawQuad(const Camera& cam)
+void SVRender::drawScreen(const Camera& cam)
 {
     OGLquadrender.OGLShader.useProgramm();
 
@@ -199,7 +193,7 @@ bool SVRender::initBowl()
 }
 
 
-bool SVRender::initQuad()
+bool SVRender::initQuadRender()
 {
     auto isgen = OGLquadrender.OGLShader.initShader("shaders/frame_screenvert.glsl", "shaders/frame_screenfrag.glsl");
 
