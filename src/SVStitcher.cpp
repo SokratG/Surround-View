@@ -10,7 +10,6 @@
 
 #include <omp.h>
 
-static auto isstart = false;
 
 
 bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
@@ -44,9 +43,9 @@ bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	    std::cerr << "Error can't autocalibrate camera parameters...\n";
 	    return false;
 	}
-	warped_image_scale = autcalib.get_warpImgScale();
-	R = autcalib.getExtRotation();
-	Ks_f = autcalib.getIntCameraParam();
+	float warped_image_scale = autcalib.get_warpImgScale();
+	std::vector<cv::Mat> R = autcalib.getExtRotation();
+	std::vector<cv::Mat> Ks_f = autcalib.getIntCameraParam();
 
 
 	SVSeamDetector smd(imgs_num, warped_image_scale, scale_factor);
@@ -74,8 +73,11 @@ bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
         }
 
 
-	isInit = true;
+        gpu_warped_ = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
+        gpu_warped_s_ = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
+        gpu_warped_scale_ = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
 
+	isInit = true;
 
 	return isInit;
 }
@@ -111,28 +113,27 @@ bool SVStitcher::initFromFile(const std::string& dirpath, const std::vector<cv::
     }
 
 
-    bool res = false;
-    if (!isstart){ // delete after test
-        res = getDataFromFile(dirpath, use_filewarp_pts);
-        if (!res){
-            std::cerr << "Error can't read camera parameters...\n";
-            return false;
-        }
-
-        SVSeamDetector smd(imgs_num, warped_image_scale, scale_factor);
-        res = smd.init(cpu_imgs, Ks_f, R);
-        if (!res){
-            std::cerr << "Error can't seam masks for images...\n";
-            return false;
-        }
-
-        gpu_seam_masks = smd.getSeams();
-        corners = smd.getCorners();
-        sizes = smd.getSizes();
-        texXmap = smd.getXmap();
-        texYmap = smd.getYmap();
-        isstart = true;
+    float warped_image_scale = 1.0;
+    std::vector<cv::Mat> R;
+    std::vector<cv::Mat> Ks_f;
+    bool res = getDataFromFile(dirpath, Ks_f, R, warped_image_scale, use_filewarp_pts);
+    if (!res){
+        std::cerr << "Error can't read camera parameters...\n";
+        return false;
     }
+
+    SVSeamDetector smd(imgs_num, warped_image_scale, scale_factor);
+    res = smd.init(cpu_imgs, Ks_f, R);
+    if (!res){
+        std::cerr << "Error can't seam masks for images...\n";
+        return false;
+    }
+
+    gpu_seam_masks = smd.getSeams();
+    corners = smd.getCorners();
+    sizes = smd.getSizes();
+    texXmap = smd.getXmap();
+    texYmap = smd.getYmap();
 
 
     if (cuBlender.get() == nullptr){
@@ -148,6 +149,10 @@ bool SVStitcher::initFromFile(const std::string& dirpath, const std::vector<cv::
         }
     }
 
+    gpu_warped_ = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
+    gpu_warped_s_ = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
+    gpu_warped_scale_ = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
+
 
     isInit = true;
 
@@ -156,7 +161,7 @@ bool SVStitcher::initFromFile(const std::string& dirpath, const std::vector<cv::
 }
 
 
-bool SVStitcher::getDataFromFile(const std::string& dirpath, const bool use_filewarp_pts)
+bool SVStitcher::getDataFromFile(const std::string& dirpath, std::vector<cv::Mat>& Ks_f, std::vector<cv::Mat>& R, float& warp_scale, const bool use_filewarp_pts)
 {
     Ks_f = std::move(std::vector<cv::Mat>(imgs_num));
     R = std::move(std::vector<cv::Mat>(imgs_num));
@@ -164,7 +169,7 @@ bool SVStitcher::getDataFromFile(const std::string& dirpath, const bool use_file
     for(auto i = 0; i < imgs_num; ++i){
            std::string KRpath{fullpath + std::to_string(i) + ".yaml"};
            cv::FileStorage KRfout(KRpath, cv::FileStorage::READ);
-           warped_image_scale = KRfout["FocalLength"];
+           warp_scale = KRfout["FocalLength"];
            if (!KRfout.isOpened()){
                std::cerr << "Error can't open camera param file: " << KRpath << "...\n";
                return false;
@@ -193,7 +198,7 @@ bool SVStitcher::getDataFromFile(const std::string& dirpath, const bool use_file
           std::vector<cv::Point_<float>> src {tl, tr, bl, br};
           std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0),
                                               cv::Point(0, height_), cv::Point(width_, height_)};
-          transformM = cv::getPerspectiveTransform(src, dst);
+          cv::Mat transformM = cv::getPerspectiveTransform(src, dst);
 
           cv::cuda::buildWarpPerspectiveMaps(transformM, false, resSize, warpXmap, warpYmap);
 
@@ -220,6 +225,7 @@ void SVStitcher::detectCorners(const cv::Mat& src, cv::Point& tl, cv::Point& bl,
       bl = cnts[0][0];
       br = cnts[0][0];
       const auto x_constrain_tl = sizes[sizes.size() - 1].width >> 1;
+
       /* find bottom-left and bottorm-right corners (or if another warping tl and tr)*/
       auto idx_tl = 0, idx_tr = 0, tot_idx = 0;
       for(const auto& pcnt : cnts){
@@ -299,7 +305,7 @@ bool SVStitcher::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 
           std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0),
                                               cv::Point(0, height_), cv::Point(width_, height_)};
-          transformM = cv::getPerspectiveTransform(src, dst);
+          cv::Mat transformM = cv::getPerspectiveTransform(src, dst);
           //cv::warpPerspective(result, result, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT);
 
           cv::cuda::buildWarpPerspectiveMaps(transformM, false, resSize, warpXmap, warpYmap);
@@ -313,12 +319,12 @@ bool SVStitcher::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 void SVStitcher::save_warpptr(const std::string& warpfile, const cv::Size& res_size,
                                 const cv::Point& tl, const cv::Point& tr, const cv::Point& bl, const cv::Point& br)
 {
-    cv::FileStorage WPTSfout(warpfile, cv::FileStorage::WRITE);
-    WPTSfout << "res_size" << res_size;
-    WPTSfout << "tl" << tl;
-    WPTSfout << "tr" << tr;
-    WPTSfout << "bl" << bl;
-    WPTSfout << "br" << br;
+      cv::FileStorage WPTSfout(warpfile, cv::FileStorage::WRITE);
+      WPTSfout << "res_size" << res_size;
+      WPTSfout << "tl" << tl;
+      WPTSfout << "tr" << tr;
+      WPTSfout << "bl" << bl;
+      WPTSfout << "br" << br;
 
 }
 
@@ -332,28 +338,25 @@ bool SVStitcher::stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& b
 
     splitRearView(imgs);
 
-    cv::cuda::GpuMat gpuimg_warped_s, gpuimg_warped;
-    cv::cuda::GpuMat stitch;
-
 #ifndef NO_OMP
-    #pragma omp parallel for default(none) shared(imgs) private(gpuimg_warped, gpuimg_warped_s)
+    #pragma omp parallel for default(none) shared(imgs)
 #endif
     for(size_t i = 0; i < imgs_num; ++i){
 
-          cv::cuda::resize(imgs[i], gpuimg_warped_s, cv::Size(), scale_factor, scale_factor, cv::INTER_NEAREST, loopStreamObj);
+          cv::cuda::resize(imgs[i], gpu_warped_scale_[i], cv::Size(), scale_factor, scale_factor, cv::INTER_NEAREST, loopStreamObj);
 
-          cv::cuda::remap(gpuimg_warped_s, gpuimg_warped, texXmap[i], texYmap[i], cv::INTER_NEAREST, cv::BORDER_REFLECT, cv::Scalar(), loopStreamObj);
+          cv::cuda::remap(gpu_warped_scale_[i], gpu_warped_[i], texXmap[i], texYmap[i], cv::INTER_NEAREST, cv::BORDER_REFLECT, cv::Scalar(), loopStreamObj);
 
-          gpuimg_warped.convertTo(gpuimg_warped_s, CV_16S, loopStreamObj);
+          gpu_warped_[i].convertTo(gpu_warped_s_[i], CV_16S, loopStreamObj);
 
-          cuBlender->feed(gpuimg_warped_s, i, loopStreamObj);
+          cuBlender->feed(gpu_warped_s_[i], i, loopStreamObj);
     }
 
-    cuBlender->blend(stitch, streamObj);
+    cuBlender->blend(stitch_, streamObj);
 
-    cv::cuda::remap(stitch, gpuimg_warped, warpXmap, warpYmap, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
+    cv::cuda::remap(stitch_, stitch_remap_, warpXmap, warpYmap, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
 
-    blend_img = gpuimg_warped(row_range, col_range);
+    blend_img = stitch_remap_(row_range, col_range);
 
     return true;
 }
@@ -369,7 +372,5 @@ void SVStitcher::splitRearView(std::vector<cv::cuda::GpuMat>& imgs)
     imgs[0] = imgs[last_idx](cv::Range(0, rear_height), cv::Range(0, rear_half_width));
     imgs[last_idx] = half_rear;
 }
-
-
 
 

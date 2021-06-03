@@ -361,14 +361,14 @@ void SVMultiBandBlender::feed(const cv::cuda::GpuMat& _img, const cv::cuda::GpuM
      feed(_img, idx, streamObj);
 }
 
+
 void SVMultiBandBlender::feed(const cv::cuda::GpuMat& _img, const int idx, cv::cuda::Stream& streamObj)
 {
       CV_Assert(_img.type() == CV_16SC3);
       CV_Assert(idx >= 0);
 
       cv::cuda::copyMakeBorder(_img, gpu_src_pyr_laplace_vec_[idx][0], gpu_imgs_borders_[idx].top, gpu_imgs_borders_[idx].bottom,
-                               gpu_imgs_borders_[idx].left, gpu_imgs_borders_[idx].right, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
-
+                               gpu_imgs_borders_[idx].left, gpu_imgs_borders_[idx].right, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);     
 
       for(auto i = 0; i < numbands; ++i)
           cv::cuda::pyrDown(gpu_src_pyr_laplace_vec_[idx][i], gpu_src_pyr_laplace_vec_[idx][i + 1], streamObj);

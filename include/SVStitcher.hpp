@@ -19,14 +19,10 @@
 
 class SVStitcher
 {
-private:
-	bool isInit = false;
+private:	
         size_t imgs_num;
         float scale_factor;
-        float warped_image_scale = 1.0;
         size_t numbands;
-	std::vector<cv::Mat> Ks_f;
-        std::vector<cv::Mat> R;
 	std::vector<cv::cuda::GpuMat> gpu_seam_masks;
 	std::vector<cv::Point> corners;
 	std::vector<cv::Size> sizes;
@@ -35,22 +31,27 @@ private:
         std::vector<cv::cuda::GpuMat> texXmap; // texture remap x-coord
         std::vector<cv::cuda::GpuMat> texYmap; // texture remap y-coord
         cv::cuda::GpuMat warpXmap, warpYmap;
-        cv::Mat transformM;
         cv::Range row_range;
         cv::Range col_range;
         // --------------
         cv::cuda::Stream streamObj;
         cv::cuda::Stream loopStreamObj;
         std::shared_ptr<SVMultiBandBlender> cuBlender;
-
+        // --------------
+        bool isInit = false;
+private:
+        cv::cuda::GpuMat stitch_, stitch_remap_;
+        std::vector<cv::cuda::GpuMat> gpu_warped_, gpu_warped_s_, gpu_warped_scale_;
 private:
         void save_warpptr(const std::string& warpfile, const cv::Size& res_size,
                           const cv::Point& tl, const cv::Point& tr, const cv::Point& bl, const cv::Point& br);
         bool prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs);
-        bool getDataFromFile(const std::string& dirpath, const bool use_filewarp_pts);
+        bool getDataFromFile(const std::string& dirpath, std::vector<cv::Mat>& Ks_f, std::vector<cv::Mat>& R, float& warp_scale, const bool use_filewarp_pts);
         void splitRearView(std::vector<cv::cuda::GpuMat>& imgs);
         void detectCorners(const cv::Mat& src, cv::Point& tl, cv::Point& bl, cv::Point& tr, cv::Point& br);
-
+        /* //avoid alloc-dealloc, try implement cuda split rear view
+         * void cuSplitRearView(std::vector<cv::cuda::GpuMat>& imgs);
+        */
 public:
         bool getInit() const {return isInit;}
         cv::Size getResSize() const {return resSize;}

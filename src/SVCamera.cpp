@@ -629,10 +629,9 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 		const auto uData = std::move(cv::cuda::GpuMat(frameSize, CV_8UC3, cudaBuffer));
 
 		if (_undistort){
-			cv::cuda::GpuMat undist_mat;
-			cv::cuda::remap(uData, undist_mat, undistFrames[i].remapX, undistFrames[i].remapY,
+			cv::cuda::remap(uData, undistFrames[i].undistFrame, undistFrames[i].remapX, undistFrames[i].remapY,
 					cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), cudaStreamObj);
-			frames[i].gpuFrame = std::move(undist_mat(undistFrames[i].roiFrame));
+			frames[i].gpuFrame = std::move(undistFrames[i].undistFrame(undistFrames[i].roiFrame));
 		}	
 	}
 

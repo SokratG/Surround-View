@@ -100,6 +100,7 @@ public:
 	} Frame;
 	typedef struct _CameraUndistortData{
 		cv::cuda::GpuMat remapX, remapY;
+                cv::cuda::GpuMat undistFrame;
 		cv::Rect roiFrame;
 	} CameraUndistortData; 
         std::array<cv::Mat, CAM_NUMS> Ks;
