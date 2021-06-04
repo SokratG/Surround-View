@@ -37,7 +37,7 @@ bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	}
 
 
-	AutoCalib autcalib(imgs_num);
+	SVAutoCalib autcalib(imgs_num);
 	bool res = autcalib.init(cpu_imgs, true);
 	if (!res){
 	    std::cerr << "Error can't autocalibrate camera parameters...\n";
@@ -219,55 +219,86 @@ void SVStitcher::detectCorners(const cv::Mat& src, cv::Point& tl, cv::Point& bl,
       cv::findContours(src, cnts, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
 
       const auto height_ = src.rows;
+      const auto half_height_ = height_ / 2;
 
-      tl = cnts[0][0];
+      tl = cv::Point(0, 0);
       tr = cv::Point(0, 0);
-      bl = cnts[0][0];
-      br = cnts[0][0];
+      bl = cv::Point(0, 0);
+      br = cv::Point(0, 0);
+
+      cv::Point left_pt_ = cnts[0][0]; cv::Point right_pt_ = cnts[0][0];
       const auto x_constrain_tl = sizes[sizes.size() - 1].width >> 1;
 
-      /* find bottom-left and bottorm-right corners (or if another warping tl and tr)*/
-      auto idx_tl = 0, idx_tr = 0, tot_idx = 0;
+      /* find left and right sides corners */
+      auto idx_l = 0, idx_r = 0, tot_idx = 0;
       for(const auto& pcnt : cnts){
           for (const auto& pt : pcnt){
-              if (bl.x >= pt.x){
-                bl = pt;
+              if (left_pt_.x >= pt.x){
+                left_pt_ = pt;
               }
 
-              if (br.x < pt.x ){
-                br = pt;
-                idx_tr = tot_idx;
+              if (right_pt_.x < pt.x ){
+                right_pt_ = pt;
+                idx_r = tot_idx;
               }
 
               tot_idx += 1;
-              if (pt.x == x_constrain_tl && pt.y < (height_ / 2))
-                idx_tl = tot_idx;
+              if (pt.x == x_constrain_tl && pt.y < half_height_)
+                idx_l = tot_idx;
           }
       }
 
 
-      /* find top-right*/
-      for(auto i = idx_tr; i < cnts[0].size() - 1; ++i){
+      /* find top-bottom-left and top-bottorm-right corners */
+     if (left_pt_.y < half_height_)
+       tl = left_pt_;
+     else
+       bl = left_pt_;
+
+     if (right_pt_.y < half_height_)
+       tr = right_pt_;
+     else
+       br = right_pt_;
+
+      cv::Point pt_corner_ = cnts[0][0];
+
+
+      /* find rest corners side */
+      for(auto i = idx_r; i < cnts[0].size() - 1; ++i){
           const auto& pt = cnts[0][i];
           const auto& next_pt = cnts[0][i + 1];
           auto dy = next_pt.y - pt.y;
-          if (br.y > pt.y && dy == 0){
-            tr = pt;
+          /* find concave */
+          if (right_pt_.y > pt.y && dy == 0){
+            pt_corner_ = pt;
             break;
           }
       }
 
-      /* find top-left*/
-      for(auto i = idx_tl; i < cnts[0].size() - 1; ++i){
+      if (tr.x == 0 && tr.y == 0)
+        tr = pt_corner_;
+      else
+        br = pt_corner_;
+
+
+
+      /* find rest corners side */
+      for(auto i = idx_l; i < cnts[0].size() - 1; ++i){
           const auto& pt = cnts[0][i];
           const auto& next_pt = cnts[0][i + 1];
           auto dx = cnts[0][i + 2].x - next_pt.x;
           auto dy = next_pt.y - pt.y;
+          /* find concave */
           if (dx == 0 && dy == 0){
-            tl = pt;
+            pt_corner_ = pt;
             break;
           }
       }
+
+      if (tl.x == 0 && tl.y == 0)
+        tl = pt_corner_;
+      else
+        bl = pt_corner_;
 
 }
 
@@ -306,7 +337,6 @@ bool SVStitcher::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           std::vector<cv::Point_<float>> dst {cv::Point(0, 0), cv::Point(width_, 0),
                                               cv::Point(0, height_), cv::Point(width_, height_)};
           cv::Mat transformM = cv::getPerspectiveTransform(src, dst);
-          //cv::warpPerspective(result, result, transformM, resSize, cv::INTER_CUBIC, cv::BORDER_CONSTANT);
 
           cv::cuda::buildWarpPerspectiveMaps(transformM, false, resSize, warpXmap, warpYmap);
 
@@ -345,7 +375,7 @@ bool SVStitcher::stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& b
 
           cv::cuda::resize(imgs[i], gpu_warped_scale_[i], cv::Size(), scale_factor, scale_factor, cv::INTER_NEAREST, loopStreamObj);
 
-          cv::cuda::remap(gpu_warped_scale_[i], gpu_warped_[i], texXmap[i], texYmap[i], cv::INTER_NEAREST, cv::BORDER_REFLECT, cv::Scalar(), loopStreamObj);
+          cv::cuda::remap(gpu_warped_scale_[i], gpu_warped_[i], texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, cv::Scalar(), loopStreamObj);
 
           gpu_warped_[i].convertTo(gpu_warped_s_[i], CV_16S, loopStreamObj);
 
@@ -368,7 +398,7 @@ void SVStitcher::splitRearView(std::vector<cv::cuda::GpuMat>& imgs)
     auto rear_width = imgs[last_idx].cols;
     auto rear_half_width = (rear_width >> 1) + 1;
     auto rear_height = imgs[last_idx].rows;
-    cv::cuda::GpuMat half_rear = imgs[last_idx](cv::Range(0, rear_height), cv::Range(rear_half_width, rear_width));
+    half_rear = imgs[last_idx](cv::Range(0, rear_height), cv::Range(rear_half_width, rear_width));
     imgs[0] = imgs[last_idx](cv::Range(0, rear_height), cv::Range(0, rear_half_width));
     imgs[last_idx] = half_rear;
 }

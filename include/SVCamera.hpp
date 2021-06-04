@@ -151,7 +151,7 @@ private:
         std::array<v4l2_buffer, CAM_NUMS> buffs{};
         cudaStream_t _cudaStream {NULL};
         cv::cuda::Stream cudaStreamObj{cv::cuda::Stream::Null()};
-        uchar* d_src[4];
+        uchar* d_src[4]; // cuda source memory
 };
 
 

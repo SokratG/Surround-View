@@ -6,7 +6,7 @@
 #include <iostream>
 
 
-bool AutoCalib::init(const std::vector<cv::Mat>& imgs, const bool savedata)
+bool SVAutoCalib::init(const std::vector<cv::Mat>& imgs, const bool savedata)
 {
 	if (isInit){
 		std::cerr << "Autocalibrator already initialize...\n";
@@ -45,10 +45,11 @@ bool AutoCalib::init(const std::vector<cv::Mat>& imgs, const bool savedata)
 }
 
 
-bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs, std::vector<cv::detail::MatchesInfo>& pairwise_matches, std::vector<cv::detail::ImageFeatures>& features)
+bool SVAutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs, std::vector<cv::detail::MatchesInfo>& pairwise_matches, std::vector<cv::detail::ImageFeatures>& features)
 {
-	//cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 5, 22, 0, 3, cv::ORB::HARRIS_SCORE, 22, 21); // 640x480
-	cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, 5, 24, 0, 3, cv::ORB::HARRIS_SCORE, 24, 35); // 1280x720
+	cv::Ptr<cv::Feature2D> finder = cv::ORB::create(maxpoints, 1.2, pyr_levels, patch_size, 0, 3, cv::ORB::HARRIS_SCORE,
+							patch_size, threshold_features);
+
 	cv::Ptr<cv::detail::FeaturesMatcher> matcher = cv::makePtr<cv::detail::BestOf2NearestMatcher>(true, match_conf);
 
 #ifdef GAMMA_CORRECTION_CALIB
@@ -81,7 +82,7 @@ bool AutoCalib::computeImageFeaturesAndMatches_(const std::vector<cv::Mat>& imgs
 	return true;
 }
 
-bool AutoCalib::computeCameraParameters(const std::vector<cv::detail::ImageFeatures>& features, const std::vector<cv::detail::MatchesInfo>& pairwise_matches)
+bool SVAutoCalib::computeCameraParameters(const std::vector<cv::detail::ImageFeatures>& features, const std::vector<cv::detail::MatchesInfo>& pairwise_matches)
 {
 
 	cv::detail::HomographyBasedEstimator est;
@@ -134,7 +135,7 @@ bool AutoCalib::computeCameraParameters(const std::vector<cv::detail::ImageFeatu
 	return true;
 }
 
-void AutoCalib::saveData(const std::string& strpath) const
+void SVAutoCalib::saveData(const std::string& strpath) const
 {
 
     for(auto i = 0; i < imgs_num; ++i){

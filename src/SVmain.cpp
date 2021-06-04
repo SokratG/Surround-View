@@ -54,7 +54,6 @@ int CameraCycle()
 	std::shared_ptr<SVRender> view_scene = std::make_shared<SVRender>(CAMERA_WIDTH, CAMERA_HEIGHT);
 	std::shared_ptr<SVDisplayView> dp = std::make_shared<SVDisplayView>();
 
-
 	std::array<SyncedCameraSource::Frame, 4> frames;
 	std::vector<cv::cuda::GpuMat> cameradata(5);
 	cv::cuda::GpuMat res;
@@ -99,6 +98,7 @@ int CameraCycle()
 		    for (auto i = 1; i <= frames.size(); ++i)
 		      cameradata[i] = frames[i -1].gpuFrame;
 		    sv.stitch(cameradata, res);
+
 		    //cv::imshow(win1, res);
 #ifdef GL_YES
 		    bool okRender = dp->render(res);

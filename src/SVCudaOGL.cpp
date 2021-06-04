@@ -118,7 +118,7 @@ bool CUDA_OGL::copyFrom(const cv::cuda::GpuMat& frame, cudaStream_t cuStream)
     if (cuStream == 0)
         cu_status = cudaMemcpy2D(dst, dpitch, frame.data, spitch, cu_width_, height_, cudaMemcpyDeviceToDevice);
     else
-        cu_status = cudaMemcpy2DAsync(dst, width_, frame.data, spitch, cu_width_, height_, cudaMemcpyDeviceToDevice, cuStream);
+        cu_status = cudaMemcpy2DAsync(dst, dpitch, frame.data, spitch, cu_width_, height_, cudaMemcpyDeviceToDevice, cuStream);
 
     if (cu_status != cudaSuccess)
         return false;

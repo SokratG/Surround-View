@@ -22,15 +22,15 @@ protected:
         void drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame);
         void drawModel(const Camera& cam);
         void drawScreen(const Camera& cam);
+
 public:  
        bool getInit() const{return isInit;}
        bool addModel(const std::string& pathmodel, const std::string& pathvertshader,
                      const std::string& pathfragshader, const glm::mat4& mat_transform);
 
 public:
-        SVRender(const int32 wnd_width_, const int32 wnd_height_) :
-            wnd_width(wnd_width_), wnd_height(wnd_height_), aspect_ratio(0.f), texReady(false)
-        {}
+        SVRender(const int32 wnd_width_, const int32 wnd_height_);
+
 
         SVRender& operator=(const SVRender&) = delete;
         SVRender(const SVRender&) = delete;

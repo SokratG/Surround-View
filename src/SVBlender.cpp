@@ -404,7 +404,9 @@ void SVMultiBandBlender::feed(const cv::cuda::GpuMat& _img, const int idx, cv::c
 
 void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj)
 {
-
+#ifndef NO_OMP
+    #pragma omp parallel for default(none)
+#endif
     for (auto i = 0; i <= numbands; ++i){
         auto* dst_i = &gpu_dst_pyr_laplace_[i];
         auto* weight_i = &gpu_dst_band_weights_[i];
@@ -441,10 +443,12 @@ void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask
 
 
 
-#define ACCELERATE_USE
+#define BLUR_REMOVE
 void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::Stream& streamObj)
 {
-
+#ifndef NO_OMP
+    #pragma omp parallel for default(none)
+#endif
     for (auto i = 0; i <= numbands; ++i){
         auto* dst_i = &gpu_dst_pyr_laplace_[i];
         auto* weight_i = &gpu_dst_band_weights_[i];
@@ -458,7 +462,7 @@ void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::Stream& streamOb
     }
 
     /* this remove some blur around already stitched picture, but if use warp perspective and ROI, we can skip this part */
-#ifndef ACCELERATE_USE
+#ifndef BLUR_REMOVE
     cv::cuda::GpuMat mask;
     cv::cuda::compare(gpu_dst_band_weights_[0](dst_rc_), WEIGHT_EPS, dst_mask_, cv::CMP_GT, streamObj);
     cv::cuda::compare(dst_mask_, 0, mask, cv::CMP_EQ, streamObj);

@@ -33,6 +33,7 @@ private:
         cv::cuda::GpuMat warpXmap, warpYmap;
         cv::Range row_range;
         cv::Range col_range;
+        cv::cuda::GpuMat half_rear;
         // --------------
         cv::cuda::Stream streamObj;
         cv::cuda::Stream loopStreamObj;
