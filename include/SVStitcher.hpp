@@ -14,9 +14,6 @@
 #include "SVBlender.hpp"
 
 
-
-
-
 class SVStitcher
 {
 private:	

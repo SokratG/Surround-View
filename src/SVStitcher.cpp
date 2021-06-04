@@ -358,7 +358,6 @@ void SVStitcher::save_warpptr(const std::string& warpfile, const cv::Size& res_s
 
 }
 
-
 bool SVStitcher::stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& blend_img)
 {
     if (!isInit){
@@ -402,5 +401,3 @@ void SVStitcher::splitRearView(std::vector<cv::cuda::GpuMat>& imgs)
     imgs[0] = imgs[last_idx](cv::Range(0, rear_height), cv::Range(0, rear_half_width));
     imgs[last_idx] = half_rear;
 }
-
-

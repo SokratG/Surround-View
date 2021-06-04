@@ -53,6 +53,8 @@ int CameraCycle()
 	source.startStream();
 	std::shared_ptr<SVRender> view_scene = std::make_shared<SVRender>(CAMERA_WIDTH, CAMERA_HEIGHT);
 	std::shared_ptr<SVDisplayView> dp = std::make_shared<SVDisplayView>();
+	std::shared_ptr<TonemapConfig> tmc = std::make_shared<TonemapConfig>();
+	//view_scene->addTonemappingCfg(tmc);
 
 	std::array<SyncedCameraSource::Frame, 4> frames;
 	std::vector<cv::cuda::GpuMat> cameradata(5);
@@ -66,7 +68,7 @@ int CameraCycle()
 	//cv::namedWindow(win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 	//cv::namedWindow(win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 
-	SVStitcher sv(4, 0.6);
+	SVStitcher sv(4, 0.65);
 	
 	auto lastTick = std::chrono::high_resolution_clock::now();
 	for (; !finish; ){			
