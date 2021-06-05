@@ -4,7 +4,7 @@
 #include <opencv2/cudaarithm.hpp>
 
 
-SVGainCompensator::SVGainCompensator(const size_t num_imgs_) : imgs_num(num_imgs_)
+SVGainCompensator::SVGainCompensator(const size_t num_imgs_) : imgs_num(num_imgs_), gain_scalar(3)
 {
     warp = std::move(std::vector<cv::UMat>(imgs_num));
     mask = std::move(std::vector<cv::UMat>(imgs_num));
@@ -32,17 +32,16 @@ void SVGainCompensator::computeGains(const std::vector<cv::Point>& corners, cons
     }
 }
 
-#include <iostream>
+
 bool SVGainCompensator::apply_compensator(const int idx, cv::cuda::GpuMat& warp_img, cv::cuda::Stream& streamObj)
 {
    if (idx > imgs_num || imgs_num <= 0)
      return false;
 
-
-   cv::cuda::GpuMat temp;
-   temp.upload(gains(idx));
-   std::cerr << temp.size() << "\n";
-   cv::cuda::multiply(warp_img, temp, warp_img, 1, -1);
+   gain_scalar[0] = gains(idx);
+   gain_scalar[1] = gains(idx);
+   gain_scalar[2] = gains(idx);
+   cv::cuda::multiply(warp_img, gain_scalar, warp_img, 1, -1, streamObj);
 
    return true;
 }

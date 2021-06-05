@@ -13,6 +13,7 @@ private:
     std::vector<cv::UMat> warp, mask;
 private:
     cv::Mat_<double> gains;
+    cv::Scalar gain_scalar;
 public:
     SVGainCompensator(const size_t num_imgs);
     void computeGains(const std::vector<cv::Point>& corners, const std::vector<cv::cuda::GpuMat>& warp_imgs,
