@@ -38,7 +38,7 @@ bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
 
 
 	SVAutoCalib autcalib(imgs_num);
-	bool res = autcalib.init(cpu_imgs, true);
+	bool res = autcalib.calibrate(cpu_imgs, true);
 	if (!res){
 	    std::cerr << "Error can't autocalibrate camera parameters...\n";
 	    return false;
@@ -49,7 +49,7 @@ bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
 
 
 	SVSeamDetector smd(imgs_num, warped_image_scale, scale_factor);
-	res = smd.init(cpu_imgs, Ks_f, R);
+	res = smd.find_seam(cpu_imgs, Ks_f, R);
 	if (!res){
 	    std::cerr << "Error can't seam masks for images...\n";
 	    return false;
@@ -63,8 +63,7 @@ bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
 	if (cuBlender.get() == nullptr){
 	    cuBlender = std::make_shared<SVMultiBandBlender>(numbands);
 	    cuBlender->prepare(corners, sizes, gpu_seam_masks);
-	}
-
+	}	
 
         res = prepareCutOffFrame(cpu_imgs);
         if (!res){
@@ -72,6 +71,9 @@ bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
             return false;
         }
 
+
+        svGainComp = std::make_shared<SVGainCompensator>(imgs_num);
+        computeGainCompensation(imgs_, gpu_seam_masks);
 
         gpu_warped_ = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
         gpu_warped_s_ = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
@@ -123,7 +125,7 @@ bool SVStitcher::initFromFile(const std::string& dirpath, const std::vector<cv::
     }
 
     SVSeamDetector smd(imgs_num, warped_image_scale, scale_factor);
-    res = smd.init(cpu_imgs, Ks_f, R);
+    res = smd.find_seam(cpu_imgs, Ks_f, R);
     if (!res){
         std::cerr << "Error can't seam masks for images...\n";
         return false;
@@ -141,6 +143,9 @@ bool SVStitcher::initFromFile(const std::string& dirpath, const std::vector<cv::
         cuBlender->prepare(corners, sizes, gpu_seam_masks);
     }
 
+    svGainComp = std::make_shared<SVGainCompensator>(imgs_num);
+    computeGainCompensation(imgs_, gpu_seam_masks);
+
     if (!use_filewarp_pts){
         res = prepareCutOffFrame(cpu_imgs);
         if (!res){
@@ -148,6 +153,7 @@ bool SVStitcher::initFromFile(const std::string& dirpath, const std::vector<cv::
             return false;
         }
     }
+
 
     gpu_warped_ = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
     gpu_warped_s_ = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
@@ -358,6 +364,7 @@ void SVStitcher::save_warpptr(const std::string& warpfile, const cv::Size& res_s
 
 }
 
+
 bool SVStitcher::stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& blend_img)
 {
     if (!isInit){
@@ -368,13 +375,15 @@ bool SVStitcher::stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& b
     splitRearView(imgs);
 
 #ifndef NO_OMP
-    #pragma omp parallel for default(none) shared(imgs)
+    //#pragma omp parallel for default(none) shared(imgs)
 #endif
     for(size_t i = 0; i < imgs_num; ++i){
 
           cv::cuda::resize(imgs[i], gpu_warped_scale_[i], cv::Size(), scale_factor, scale_factor, cv::INTER_NEAREST, loopStreamObj);
 
           cv::cuda::remap(gpu_warped_scale_[i], gpu_warped_[i], texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, cv::Scalar(), loopStreamObj);
+
+          svGainComp->apply_compensator(i, gpu_warped_[i], loopStreamObj);
 
           gpu_warped_[i].convertTo(gpu_warped_s_[i], CV_16S, loopStreamObj);
 
@@ -401,3 +410,16 @@ void SVStitcher::splitRearView(std::vector<cv::cuda::GpuMat>& imgs)
     imgs[0] = imgs[last_idx](cv::Range(0, rear_height), cv::Range(0, rear_half_width));
     imgs[last_idx] = half_rear;
 }
+
+void SVStitcher::computeGainCompensation(const std::vector<cv::cuda::GpuMat>& gpu_imgs, const std::vector<cv::cuda::GpuMat>& gpu_warped_mask)
+{
+    std::vector<cv::cuda::GpuMat> warp_gpu(imgs_num);
+    for (auto i = 0; i < imgs_num; ++i){
+        cv::cuda::remap(gpu_imgs[i], warp_gpu[i], texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, cv::Scalar(), streamObj);
+    }
+    svGainComp->computeGains(corners, warp_gpu, gpu_warped_mask);
+}
+
+
+
+

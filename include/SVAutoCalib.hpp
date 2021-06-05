@@ -50,7 +50,7 @@ public:
         size_t getThreshFeatures() const {return threshold_features;}
 
 public:
-        bool init(const std::vector<cv::Mat>& rescale_imgs, const bool savedata=false);
+        bool calibrate(const std::vector<cv::Mat>& rescale_imgs, const bool savedata=false);
 
         std::vector<cv::Mat> getExtTranslation() const {return T;}
         std::vector<cv::Mat> getExtRotation() const{return R;}

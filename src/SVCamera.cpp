@@ -649,9 +649,7 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 	}
 
 #ifdef NO_COMPILE
-
-	cds.waitForCompletion();
-
+	cudaStreamObj.waitForCompletion();
 	if (_cudaStream)
 		cudaStreamSynchronize(_cudaStream);
 

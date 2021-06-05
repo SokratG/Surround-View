@@ -9,11 +9,11 @@
 #include <cuda_gl_interop.h>
 
 SVRender::SVRender(const int32 wnd_width_, const int32 wnd_height_) :
-    wnd_width(wnd_width_), wnd_height(wnd_height_), aspect_ratio(0.f), texReady(false), tmc(nullptr)
+    wnd_width(wnd_width_), wnd_height(wnd_height_), aspect_ratio(0.f), texReady(false)
 {
 
 }
-double min_, max_;
+
 void SVRender::render(const Camera& cam, const cv::cuda::GpuMat& frame)
 {
     // render command
@@ -22,9 +22,6 @@ void SVRender::render(const Camera& cam, const cv::cuda::GpuMat& frame)
     glBindFramebuffer(GL_FRAMEBUFFER, OGLquadrender.framebuffer); // bind scene framebuffer
     glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    if (tmc)
-      contrastCorrectionParameters(frame, tmc);
 
     drawSurroundView(cam, frame);
 
@@ -69,46 +66,6 @@ void SVRender::texturePrepare(const cv::cuda::GpuMat& frame)
     auto ok = cuOgl.copyFrom(frame);
 }
 
-void SVRender::addTonemappingCfg(std::shared_ptr<TonemapConfig>& tmc_)
-{
-    tmc = tmc_;
-    tmc->t_intensity = glm::exp(-tmc->intensity);
-    chan_tonemap = std::move(std::vector<cv::cuda::GpuMat>(3));
-}
-
-void SVRender::contrastCorrectionParameters(const cv::cuda::GpuMat& frame, std::shared_ptr<TonemapConfig>& tmc)
-{
-    /* Reinhard algorithm*/
-    cv::cuda::cvtColor(frame, gray_img, cv::COLOR_RGB2GRAY, 0, streamObj);
-    cv::cuda::max(gray_img, cv::Scalar(1e-4), log_img, streamObj);
-    cv::cuda::log(log_img, log_img, streamObj);
-
-    const auto total_ = frame.cols * frame.rows;
-    const float log_mean = static_cast<float>(cv::cuda::sum(log_img)[0] / total_);
-
-    double log_min, log_max;
-    cv::cuda::minMaxLoc(log_img, &log_min, &log_max, nullptr, nullptr);
-
-    float key = static_cast<float>((log_max - log_mean) / (log_max - log_min));
-    tmc->map_key = 0.3f + 0.7f * glm::pow(key, 1.4f);
-
-    cv::cuda::split(frame, chan_tonemap, streamObj);
-    float mean[3];
-    cv::Scalar chan_mean, std_dev;
-#ifndef NO_OMP
-    #pragma omp parallel for default(none) shared(mean) private(chan_mean, std_dev)
-#endif
-    for (auto i = 0; i < 3; ++i){
-      cv::cuda::meanStdDev(chan_tonemap[i], chan_mean, std_dev);
-      mean[i] = chan_mean[0];
-    }
-
-    tmc->chan_mean = glm::vec3(mean[0], mean[1], mean[2]);
-
-    cv::cuda::meanStdDev(gray_img, chan_mean, std_dev);
-    tmc->gray_mean = static_cast<float>(chan_mean[0]);
-}
-
 
 void SVRender::drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame)
 {
@@ -119,20 +76,10 @@ void SVRender::drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame
 
     model = glm::scale(model, glm::vec3(5.f, 5.f, 5.f));
 
-
     OGLbowl.OGLShader.useProgramm();
     OGLbowl.OGLShader.setMat4("model", model);
     OGLbowl.OGLShader.setMat4("view", view);
     OGLbowl.OGLShader.setMat4("projection", projection);
-    if (tmc){
-      OGLbowl.OGLShader.setFloat("t_intensity", tmc->t_intensity);
-      OGLbowl.OGLShader.setFloat("light_adapt", tmc->light_adapt);
-      OGLbowl.OGLShader.setFloat("color_adapt", tmc->color_adapt);
-      OGLbowl.OGLShader.setFloat("map_key", tmc->map_key);
-      OGLbowl.OGLShader.setFloat("gray_mean", tmc->gray_mean);
-      OGLbowl.OGLShader.setVec3("chan_mean", tmc->chan_mean);
-    }
-
 
     texturePrepare(frame);
 

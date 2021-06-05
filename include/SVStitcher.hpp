@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
-#include <opencv2/stitching/detail/camera.hpp>
 #include <opencv2/cudaimgproc.hpp>
+#include "SVGainCompensator.hpp"
 
 #include <utility>
 #include <algorithm>
@@ -35,6 +35,7 @@ private:
         cv::cuda::Stream streamObj;
         cv::cuda::Stream loopStreamObj;
         std::shared_ptr<SVMultiBandBlender> cuBlender;
+        std::shared_ptr<SVGainCompensator> svGainComp;
         // --------------
         bool isInit = false;
 private:
@@ -47,6 +48,7 @@ private:
         bool getDataFromFile(const std::string& dirpath, std::vector<cv::Mat>& Ks_f, std::vector<cv::Mat>& R, float& warp_scale, const bool use_filewarp_pts);
         void splitRearView(std::vector<cv::cuda::GpuMat>& imgs);
         void detectCorners(const cv::Mat& src, cv::Point& tl, cv::Point& bl, cv::Point& tr, cv::Point& br);
+        void computeGainCompensation(const std::vector<cv::cuda::GpuMat>& gpu_imgs, const std::vector<cv::cuda::GpuMat>& gpu_warped_mask);
         /* //avoid alloc-dealloc, try implement cuda split rear view
          * void cuSplitRearView(std::vector<cv::cuda::GpuMat>& imgs);
         */

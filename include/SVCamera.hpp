@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include <opencv2/core.hpp>
+#include <opencv2/core/cuda.hpp>
 //#include <opencv2/cudacodec.hpp>
 
 #include <cuda_runtime.h>

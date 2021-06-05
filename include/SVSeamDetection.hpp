@@ -45,6 +45,6 @@ public:
         imgs_num(num_imgs), warped_image_scale(warped_image_scale_), work_scale(work_scale_),
         mask_maxnorm_size(MAX_MASK_WIDTH, MAX_MASK_HEIGHT), mask_minnorm_size(MIN_MASK_WIDTH, MIN_MASK_HEIGHT)
     {assert(num_imgs > 0);}
-    bool init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R,
+    bool find_seam(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R,
               const std::vector<cv::Mat>& T = std::vector<cv::Mat>());
 };

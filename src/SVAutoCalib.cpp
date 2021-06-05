@@ -6,7 +6,7 @@
 #include <iostream>
 
 
-bool SVAutoCalib::init(const std::vector<cv::Mat>& imgs, const bool savedata)
+bool SVAutoCalib::calibrate(const std::vector<cv::Mat>& imgs, const bool savedata)
 {
 	if (isInit){
 		std::cerr << "Autocalibrator already initialize...\n";

@@ -2,7 +2,6 @@
 #include <opencv2/stitching/detail/exposure_compensate.hpp>
 #include <opencv2/stitching/detail/seam_finders.hpp>
 #include <opencv2/stitching/warpers.hpp>
-#include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/cudaarithm.hpp>
 #include <opencv2/cudafilters.hpp>
@@ -10,7 +9,7 @@
 #include <iostream>
 
 
-bool SVSeamDetector::init(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R, const std::vector<cv::Mat>& T)
+bool SVSeamDetector::find_seam(const std::vector<cv::Mat>& imgs, const std::vector<cv::Mat>& Ks_f, const std::vector<cv::Mat>& R, const std::vector<cv::Mat>& T)
 {
         if (isInit){
             std::cerr << "SeamDetector already initialize...\n";
@@ -100,7 +99,6 @@ bool SVSeamDetector::seamDetect(const std::vector<cv::UMat>& imgs_warped, std::v
       compens->feed(corners, imgs_warped, masks_warped_);
 
 
-
       for (int i = 0; i < imgs_num; ++i){
             compens->apply(i, corners[i], imgs_warped[i], masks_warped_[i]);
             imgs_warped[i].convertTo(imgs_warped_f[i], CV_32F);
@@ -127,3 +125,4 @@ bool SVSeamDetector::seamDetect(const std::vector<cv::UMat>& imgs_warped, std::v
 
       return true;
 }
+
