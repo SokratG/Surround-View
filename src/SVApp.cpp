@@ -36,10 +36,17 @@ static void addCar(std::shared_ptr<SVRender>& view_, const SVAppConfig& svcfg)
       std::cerr << "Error can't add model\n";
 }
 
+static void addBowlConfig(std::shared_ptr<SVRender>& view_)
+{
+    /*
+        TODO
+    */
+}
+
 
 SVApp::SVApp(const SVAppConfig& svcfg) :
     cameraSize(svcfg.cam_width, svcfg.cam_height), undistSize(svcfg.cam_width, svcfg.cam_height),
-    calibSize(svcfg.calib_width, svcfg.calib_height), limit_iteration_show(-1)
+    calibSize(svcfg.calib_width, svcfg.calib_height), limit_iteration_show(-1), threadpool(svcfg.num_pool_threads)
 {
     svappcfg = svcfg;
     cameradata = std::move(std::vector<cv::cuda::GpuMat>(CAM_NUMS + 1));
@@ -118,8 +125,12 @@ bool SVApp::init(const int limit_iteration_init_)
 
 void SVApp::run()
 {
+    /*
+        TODO add threadpool recompute gaincompenstaion
+    */
 
     auto lastTick = std::chrono::high_resolution_clock::now();
+    time_recompute_gain = 0;
     for (; !finish; ){
 
             if (!source->capture(frames)){
@@ -143,11 +154,13 @@ void SVApp::run()
            if (cv::waitKey(1) > 0)
                break;
 #endif
-#ifdef LOG_USE
+
             const auto now = std::chrono::high_resolution_clock::now();
             const auto dt = now - lastTick;
             lastTick = now;
             const int dtMs = std::chrono::duration_cast<std::chrono::milliseconds>(dt).count();
+            addEventTask(dtMs);
+#ifdef LOG_USE
             std::cout << "dt = " << dtMs << " ms\n";
 #endif
     }
@@ -156,7 +169,15 @@ void SVApp::run()
 
 
 
+void SVApp::addEventTask(int dtms, const std::vector<cv::cuda::GpuMat>& datas)
+{
+    time_recompute_gain += dtms;
+    if (std::chrono::milliseconds(time_recompute_gain) > svappcfg.time_recompute_gain){
+       time_recompute_gain = 0;
 
+    }
+
+}
 
 
 

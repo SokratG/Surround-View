@@ -72,7 +72,7 @@ bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
         }
 
 
-        svGainComp = std::make_shared<SVGainCompensator>(imgs_num);
+        svGainComp = std::make_shared<SVChannelCompensator>(imgs_num);
         computeGainCompensation(imgs_, gpu_seam_masks);
 
         gpu_warped_ = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
@@ -143,7 +143,7 @@ bool SVStitcher::initFromFile(const std::string& dirpath, const std::vector<cv::
         cuBlender->prepare(corners, sizes, gpu_seam_masks);
     }
 
-    svGainComp = std::make_shared<SVGainCompensator>(imgs_num);
+    svGainComp = std::make_shared<SVChannelCompensator>(imgs_num);
     computeGainCompensation(imgs_, gpu_seam_masks);
 
     if (!use_filewarp_pts){
@@ -375,7 +375,7 @@ bool SVStitcher::stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& b
     splitRearView(imgs);
 
 #ifndef NO_OMP
-    //#pragma omp parallel for default(none) shared(imgs)
+    #pragma omp parallel for default(none) shared(imgs)
 #endif
     for(size_t i = 0; i < imgs_num; ++i){
 
@@ -395,6 +395,7 @@ bool SVStitcher::stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& b
     cv::cuda::remap(stitch_, stitch_remap_, warpXmap, warpYmap, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
 
     blend_img = stitch_remap_(row_range, col_range);
+
 
     return true;
 }

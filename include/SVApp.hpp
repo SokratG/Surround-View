@@ -2,7 +2,7 @@
 #include "SVCamera.hpp"
 #include "SVStitcher.hpp"
 #include "SVDisplay.hpp"
-
+#include "ThreadPool.hpp"
 
 
 struct SVAppConfig
@@ -21,12 +21,15 @@ struct SVAppConfig
     int numbands = 4;
     float scale_factor = 0.65;
     int limit_iteration_init = 5000;
+    int num_pool_threads = 1;
+    std::chrono::seconds time_recompute_gain{5};
 };
 
 
 class SVApp
 {
 private:
+    ThreadPool threadpool;
     SVAppConfig svappcfg;
     int limit_iteration_init;
     int limit_iteration_show;
@@ -41,9 +44,10 @@ private:
     std::array<SyncedCameraSource::Frame, CAM_NUMS> frames;
     std::vector<cv::cuda::GpuMat> cameradata;
     cv::cuda::GpuMat stitch_frame;
+    int time_recompute_gain;
 protected:
     void release();
-    void addTimeTask();
+    void addEventTask(int dtms, const std::vector<cv::cuda::GpuMat>& datas);
 public:
     SVApp(const SVAppConfig& svcfg);
     ~SVApp();

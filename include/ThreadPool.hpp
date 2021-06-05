@@ -21,7 +21,7 @@ public:
 
 	explicit ThreadPool(const size_t numThreads) {
 		if (numThreads == 0)
-			throw std::exception("invalid input value");
+                    throw std::runtime_error("invalid input value");
 
 		start(numThreads);
 	}
@@ -100,4 +100,3 @@ private:
 	}
 
 };
-© 2021 GitHub, I

@@ -35,7 +35,7 @@ private:
         cv::cuda::Stream streamObj;
         cv::cuda::Stream loopStreamObj;
         std::shared_ptr<SVMultiBandBlender> cuBlender;
-        std::shared_ptr<SVGainCompensator> svGainComp;
+        std::shared_ptr<SVChannelCompensator> svGainComp;
         // --------------
         bool isInit = false;
 private:
