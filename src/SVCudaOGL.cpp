@@ -4,11 +4,6 @@
 
 #include <cuda_gl_interop.h>
 
-#define GL_BGR  0x80E0
-#define GL_BGRA 0x80E1
-
-
-
 // ------------------------------- CUDA_OGL --------------------------------
 
 CUDA_OGL::~CUDA_OGL()

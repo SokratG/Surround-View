@@ -7,10 +7,12 @@
 
 #include <opencv2/core/cuda.hpp>
 
+#define GL_BGR  0x80E0
+#define GL_BGRA 0x80E1
+
+
 using uint = uint32_t;
 using int32 = int32_t;
-
-
 
 struct CUDA_OGL
 {
