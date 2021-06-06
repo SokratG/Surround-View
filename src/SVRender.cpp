@@ -5,24 +5,15 @@
 
 #include <cuda_gl_interop.h>
 
-#include <opencv2/videoio.hpp>
-
-cv::VideoWriter invid;
-
-
-
 
 SVRender::SVRender(const int32 wnd_width_, const int32 wnd_height_) :
     wnd_width(wnd_width_), wnd_height(wnd_height_), aspect_ratio(0.f), texReady(false),
     tonemap_luminance(1.0)
 {
-    invid.open("stream.avi", cv::VideoWriter::fourcc('D', 'I', 'V', 'X'), 15, cv::Size(wnd_width_, wnd_height_));
+
 }
 
-SVRender::~SVRender()
-{
-    invid.release();
-}
+
 
 void SVRender::render(const Camera& cam, const cv::cuda::GpuMat& frame)
 {
@@ -126,15 +117,6 @@ void SVRender::drawScreen(const Camera& cam)
     glBindVertexArray(OGLquadrender.VAO);
     glBindTexture(GL_TEXTURE_2D, OGLquadrender.framebuffer_tex);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-
-    cv::Mat writebuffer(cv::Size(wnd_width, wnd_height), CV_8UC3);
-    glReadBuffer(GL_FRONT);
-    glReadPixels(0, 0, wnd_width, wnd_height, GL_BGR, GL_UNSIGNED_BYTE, writebuffer.data);
-
-    cv::flip(writebuffer, writebuffer, 0);
-
-    invid.write(writebuffer);
 
 }
 

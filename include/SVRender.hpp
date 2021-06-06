@@ -28,7 +28,6 @@ public:
 
 public:
         SVRender(const int32 wnd_width_, const int32 wnd_height_);
-        ~SVRender();
 
         SVRender& operator=(const SVRender&) = delete;
         SVRender(const SVRender&) = delete;
