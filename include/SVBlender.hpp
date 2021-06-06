@@ -1,6 +1,6 @@
+#pragma once
 #include <opencv2/core/cuda.hpp>
-#include <opencv2/core/core.hpp>
-#include <opencv2/stitching/detail/util.hpp>
+
 #include <cuda_runtime.h>
 
 // ------------------------------- CUDABlender --------------------------------

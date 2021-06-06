@@ -1,8 +1,9 @@
 #pragma once
-#include "SVCamera.hpp"
-#include "SVStitcher.hpp"
-#include "SVDisplay.hpp"
-#include "ThreadPool.hpp"
+#include <SVCamera.hpp>
+#include <SVStitcher.hpp>
+#include <SVDisplay.hpp>
+
+#include <ThreadPool.hpp>
 
 
 struct SVAppConfig
@@ -22,7 +23,12 @@ struct SVAppConfig
     float scale_factor = 0.65;
     int limit_iteration_init = 5000;
     int num_pool_threads = 1;
-    std::chrono::seconds time_recompute_gain{5};
+    std::chrono::seconds time_recompute_photometric{10};
+    ConfigBowl cbowl;
+    std::string surroundshadervert = "shaders/surroundvert.glsl";
+    std::string surroundshaderfrag = "shaders/surroundfrag.glsl";
+    std::string screenshadervert = "shaders/frame_screenvert.glsl";
+    std::string screenshaderfrag = "shaders/frame_screenfrag.glsl";
 };
 
 
@@ -47,7 +53,7 @@ private:
     int time_recompute_gain;
 protected:
     void release();
-    void addEventTask(int dtms, const std::vector<cv::cuda::GpuMat>& datas);
+    void eventTask(int dtms, const std::vector<cv::cuda::GpuMat>& datas);
 public:
     SVApp(const SVAppConfig& svcfg);
     ~SVApp();

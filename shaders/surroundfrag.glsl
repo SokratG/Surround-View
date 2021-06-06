@@ -9,8 +9,10 @@ uniform sampler2D surroundTexture;
 const lowp float gamma_coef = 2.2f;
 const lowp float blend_factor = 1.75f;
 const lowp vec3 lum_vec = vec3(0.2126f, 0.7152f, 0.0722f);
+const lowp float lum_max_white = 0.9f;
 
 
+uniform highp float lum_white;
 
 highp vec3 gamma_correction(const highp vec3 color, const lowp float g_coef)
 {	
@@ -40,7 +42,7 @@ highp vec3 compute_tex_mix()
 }
 
 
-// Reinhard algorithm
+// Reinhard tonemap algorithm
 highp float luminance(const highp vec3 v)
 {
 	return dot(v, lum_vec);
@@ -64,7 +66,7 @@ highp vec3 reinhard_jodie_tonemap(vec3 c_in)
 {
 	highp float l = luminance(c_in);
 	highp vec3 tv = c_in / (1.f + c_in);
-	return mix(c_in / (1.f + l), tv, tv);
+	return clamp(mix(c_in / (1.f + l), tv, tv), 0.0f, 1.0f);
 }
 
 void main()
@@ -73,7 +75,9 @@ void main()
 
 	highp vec3 color = compute_tex_mix();
 	
-	color = reinhard_tonemap(color, 0.55f);
+	highp float white_luminance = lum_max_white < lum_white ? lum_max_white : lum_white; 
+
+	color = reinhard_tonemap(color, white_luminance);
 
 	color = gamma_correction(color, gamma_coef);
 	

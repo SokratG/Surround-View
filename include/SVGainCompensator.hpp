@@ -1,10 +1,7 @@
 #pragma once
-#include <opencv2/cudaimgproc.hpp>
-
 #include <vector>
-#include <cmath>
 
-
+#include <opencv2/core/cuda.hpp>
 
 class SVGainCompensator
 {
@@ -13,7 +10,6 @@ private:
     std::vector<cv::UMat> warp, mask;
 private:
     cv::Mat_<double> gains;
-    cv::Scalar gain_scalar;
 public:
     SVGainCompensator(const size_t imgs_num_);
     void computeGains(const std::vector<cv::Point>& corners, const std::vector<cv::cuda::GpuMat>& warp_imgs,
@@ -48,7 +44,6 @@ private:
     std::vector<cv::UMat> warp, mask;
 private:
     cv::Mat_<double> gains;
-    cv::Scalar gain_scalar;
 public:
     SVChannelCompensator(const size_t imgs_num_);
     void computeGains(const std::vector<cv::Point>& corners, const std::vector<cv::cuda::GpuMat>& warp_imgs,

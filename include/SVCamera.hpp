@@ -1,15 +1,13 @@
 #pragma once
 #include <iostream>
 #include <string>
-#include <opencv2/core.hpp>
+
 #include <opencv2/core/cuda.hpp>
 //#include <opencv2/cudacodec.hpp>
 
 #include <cuda_runtime.h>
-#include <linux/videodev2.h>
 
-#include <thread>
-#include <chrono>
+#include <linux/videodev2.h>
 
 using namespace std::literals::chrono_literals;
 

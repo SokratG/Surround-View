@@ -1,9 +1,10 @@
-#include "SVApp.hpp"
+#include <SVApp.hpp>
+
 #include <csignal>
+
 #include <omp.h>
 
-
-//#define GL_USE
+#define GL_USE
 
 #ifndef GL_USE
 #include <opencv2/highgui.hpp>
@@ -26,9 +27,9 @@ void sig_handler(int signo)
 static void addCar(std::shared_ptr<SVRender>& view_, const SVAppConfig& svcfg)
 {
     glm::mat4 transform_car(1.f);
-    transform_car = glm::translate(transform_car, glm::vec3(0.f, 0.37f, 0.f));
+    transform_car = glm::translate(transform_car, glm::vec3(0.f, 0.74f, 0.f));
     transform_car = glm::rotate(transform_car, glm::radians(-90.f), glm::vec3(1.f, 0.f, 0.f));
-    transform_car = glm::scale(transform_car, glm::vec3(0.0012f));
+    transform_car = glm::scale(transform_car, glm::vec3(0.0016f));
 
     bool is_Add = view_->addModel(svcfg.car_model, svcfg.car_vert_shader,
                     svcfg.car_frag_shader, transform_car);
@@ -36,11 +37,16 @@ static void addCar(std::shared_ptr<SVRender>& view_, const SVAppConfig& svcfg)
       std::cerr << "Error can't add model\n";
 }
 
-static void addBowlConfig(std::shared_ptr<SVRender>& view_)
+static void addBowlConfig(ConfigBowl& cbowl)
 {
-    /*
-        TODO
-    */
+    /* Bowl parameter */
+    glm::mat4 transform_bowl(1.f);
+    cbowl.transformation = transform_bowl;
+    cbowl.disk_radius = 0.35f;
+    cbowl.parab_radius = 0.55f;
+    cbowl.hole_radius = 0.09f;
+    cbowl.a = 0.4f; cbowl.b = 0.4f; cbowl.c = 0.2f;
+    cbowl.vertices_num  = 750.f;
 }
 
 
@@ -111,7 +117,12 @@ bool SVApp::init(const int limit_iteration_init_)
                 init = svtitch->initFromFile(svappcfg.calib_folder, datas, false);
 #ifdef GL_USE
                 if (init){
+                    addBowlConfig(svappcfg.cbowl);
                     dp->init(cameraSize.width, cameraSize.height, view_scene);
+
+                    view_scene->init(svappcfg.cbowl, svappcfg.surroundshadervert, svappcfg.surroundshaderfrag,
+                                     svappcfg.screenshadervert, svappcfg.screenshaderfrag);
+
                     addCar(view_scene, svappcfg);
                 }
 #endif
@@ -125,10 +136,6 @@ bool SVApp::init(const int limit_iteration_init_)
 
 void SVApp::run()
 {
-    /*
-        TODO add threadpool recompute gaincompenstaion
-    */
-
     auto lastTick = std::chrono::high_resolution_clock::now();
     time_recompute_gain = 0;
     for (; !finish; ){
@@ -145,10 +152,12 @@ void SVApp::run()
             svtitch->stitch(cameradata, stitch_frame);
 
 #ifdef GL_USE
+            view_scene->setLuminance(svtitch->getLuminance());
+
             bool okRender = dp->render(stitch_frame);
             if (!okRender)
               break;
-            std::this_thread::sleep_for(1ms);
+            std::this_thread::sleep_for(3ms);
 #else
            cv::imshow(svappcfg.win1, stitch_frame);
            if (cv::waitKey(1) > 0)
@@ -159,7 +168,7 @@ void SVApp::run()
             const auto dt = now - lastTick;
             lastTick = now;
             const int dtMs = std::chrono::duration_cast<std::chrono::milliseconds>(dt).count();
-            addEventTask(dtMs);
+            eventTask(dtMs, cameradata);
 #ifdef LOG_USE
             std::cout << "dt = " << dtMs << " ms\n";
 #endif
@@ -169,13 +178,17 @@ void SVApp::run()
 
 
 
-void SVApp::addEventTask(int dtms, const std::vector<cv::cuda::GpuMat>& datas)
+void SVApp::eventTask(int dtms, const std::vector<cv::cuda::GpuMat>& datas)
 {
     time_recompute_gain += dtms;
-    if (std::chrono::milliseconds(time_recompute_gain) > svappcfg.time_recompute_gain){
-       time_recompute_gain = 0;
-
+    if (std::chrono::milliseconds(time_recompute_gain) > svappcfg.time_recompute_photometric){
+           time_recompute_gain = 0;
+           threadpool.enqueue([=](){
+                svtitch->recomputeGain_Luminance(datas);
+                std::this_thread::sleep_for(1ms);
+           });
     }
+
 
 }
 

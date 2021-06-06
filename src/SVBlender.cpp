@@ -1,7 +1,9 @@
-#include "SVBlender.hpp"
+#include <SVBlender.hpp>
+
+#include <opencv2/stitching/detail/util.hpp>
 #include <opencv2/cudaarithm.hpp>
 #include <opencv2/cudawarping.hpp>
-#include <opencv2/imgproc.hpp>
+
 
 #include <omp.h>
 
@@ -404,9 +406,6 @@ void SVMultiBandBlender::feed(const cv::cuda::GpuMat& _img, const int idx, cv::c
 
 void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cuda::Stream& streamObj)
 {
-#ifndef NO_OMP
-    #pragma omp parallel for default(none)
-#endif
     for (auto i = 0; i <= numbands; ++i){
         auto* dst_i = &gpu_dst_pyr_laplace_[i];
         auto* weight_i = &gpu_dst_band_weights_[i];
@@ -446,9 +445,6 @@ void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask
 #define BLUR_REMOVE
 void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::Stream& streamObj)
 {
-#ifndef NO_OMP
-    #pragma omp parallel for default(none)
-#endif
     for (auto i = 0; i <= numbands; ++i){
         auto* dst_i = &gpu_dst_pyr_laplace_[i];
         auto* weight_i = &gpu_dst_band_weights_[i];

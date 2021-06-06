@@ -1,17 +1,12 @@
 #pragma once
 #include <string>
-#include <opencv2/cudaimgproc.hpp>
-#include "SVGainCompensator.hpp"
-
 #include <utility>
-#include <algorithm>
-#include <iterator>
 #include <cmath>
 
+#include <opencv2/cudaimgproc.hpp>
 
-#include <cuda_runtime.h>
-
-#include "SVBlender.hpp"
+#include <SVGainCompensator.hpp>
+#include <SVBlender.hpp>
 
 
 class SVStitcher
@@ -37,9 +32,12 @@ private:
         std::shared_ptr<SVMultiBandBlender> cuBlender;
         std::shared_ptr<SVChannelCompensator> svGainComp;
         // --------------
+        std::vector<cv::cuda::GpuMat> warp_gain_gpu, gpu_scale, gpu_gray;
+        float tonemap_luminance;
+        // --------------
         bool isInit = false;
 private:
-        cv::cuda::GpuMat stitch_, stitch_remap_;
+        cv::cuda::GpuMat stitch_, stitch_ROI_;
         std::vector<cv::cuda::GpuMat> gpu_warped_, gpu_warped_s_, gpu_warped_scale_;
 private:
         void save_warpptr(const std::string& warpfile, const cv::Size& res_size,
@@ -48,7 +46,7 @@ private:
         bool getDataFromFile(const std::string& dirpath, std::vector<cv::Mat>& Ks_f, std::vector<cv::Mat>& R, float& warp_scale, const bool use_filewarp_pts);
         void splitRearView(std::vector<cv::cuda::GpuMat>& imgs);
         void detectCorners(const cv::Mat& src, cv::Point& tl, cv::Point& bl, cv::Point& tr, cv::Point& br);
-        void computeGainCompensation(const std::vector<cv::cuda::GpuMat>& gpu_imgs, const std::vector<cv::cuda::GpuMat>& gpu_warped_mask);
+        void computeGain_MaxLuminance(const std::vector<cv::cuda::GpuMat>& gpu_imgs, const std::vector<cv::cuda::GpuMat>& gpu_warped_mask);
         /* //avoid alloc-dealloc, try implement cuda split rear view
          * void cuSplitRearView(std::vector<cv::cuda::GpuMat>& imgs);
         */
@@ -57,12 +55,14 @@ public:
         cv::Size getResSize() const {return resSize;}
         void setNumbands(const size_t numbands_){ numbands = numbands_;}
         size_t getNumbands() const { return numbands;}
+        float getLuminance() const {return tonemap_luminance;}
 public:
         SVStitcher(const size_t numbands_ = 4, const float scale_factor_ = 1.0) :
-            cuBlender(nullptr), numbands(numbands_), scale_factor(scale_factor_) {}
+            cuBlender(nullptr), numbands(numbands_), scale_factor(scale_factor_), tonemap_luminance(1.0) {}
         bool init(const std::vector<cv::cuda::GpuMat>& imgs);
         bool initFromFile(const std::string& dirpath, const std::vector<cv::cuda::GpuMat>& imgs, const bool use_filewarp_pts=false);
         bool stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& blend_img);
+        void recomputeGain_Luminance(const std::vector<cv::cuda::GpuMat>& gpu_imgs);
 };
 
 

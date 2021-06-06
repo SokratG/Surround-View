@@ -1,11 +1,12 @@
 #pragma once
-
 #include <fstream>
 #include <string>
 #include <iostream>
 #include <sstream>
+
 #include <GLES3/gl32.h>
 #include <EGL/egl.h>
+
 #include <glm/glm.hpp>
 
 
@@ -142,7 +143,7 @@ protected:
             std::string str = Shader::readShaderSource(filename);
             const char* cstr = str.c_str();
             glShaderSource(shader, 1, &cstr, NULL);
-            glCompileShader(shader);
+            glCompileShader(shader);     
             glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
             if (!compiled) {
                 shaderErrors(shader);
@@ -185,7 +186,7 @@ private:
             glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
             GLchar log[buff_len]{ 0 };
             glGetProgramInfoLog(program, length, &length, log);
-            std::cerr << "Compile Error, Log Below\n" << log << "\n";
+            std::cerr << "Shader Programm Error, Log Below\n" << log << "\n";
 	}
 	void shaderErrors(const GLint shader) {
             GLint length;

@@ -1,12 +1,9 @@
-#include "SVApp.hpp"
-
-
+#include <SVApp.hpp>
 
 
 
 int main(int argc, char* argv[])
 {
-	std::cout << "Started\n";
 
 	SVAppConfig svcfg;
 
@@ -15,8 +12,6 @@ int main(int argc, char* argv[])
 	auto res = svapp.init();
 
 	svapp.run();
-	
-	std::cout << "Done!\n";
 
 	return 0;
 }

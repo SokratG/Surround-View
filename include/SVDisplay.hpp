@@ -1,7 +1,9 @@
 #pragma once
 #include <memory>
 #include <stdint.h>
-#include "SVRender.hpp"
+
+#include <SVRender.hpp>
+
 #define GLFW_INCLUDE_ES32
 #include "glfw3/glfw3.h"
 
@@ -21,7 +23,8 @@ private:
         bool useDemoMode, useTopView;
 
 protected:
-        void demoMode(Camera& camera);
+        void demoSVMode(Camera& camera);
+        void demoTopViewMode(Camera& camera);
 public:
         SVDisplayView() : window(nullptr), disp_view(nullptr)
         {
@@ -38,8 +41,8 @@ public:
         bool render(const cv::cuda::GpuMat& frame);
 
 public:
-        void setDemoMode(const bool demo);
-        bool getDemoMode() const;
+        void setSVDemoMode(const bool demo);
+        bool getSVDemoMode() const;
         void setTopView(const bool topview);
         bool getTopView() const;
         void resetCameraState();

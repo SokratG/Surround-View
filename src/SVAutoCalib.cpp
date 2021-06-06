@@ -1,4 +1,5 @@
-#include "SVAutoCalib.hpp"
+#include <SVAutoCalib.hpp>
+
 #include <opencv2/stitching/detail/motion_estimators.hpp>
 #include <opencv2/stitching/detail/matchers.hpp>
 #include <opencv2/stitching/detail/camera.hpp>

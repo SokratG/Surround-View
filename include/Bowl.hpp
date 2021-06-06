@@ -1,5 +1,5 @@
 #pragma once
-#include "meshgrid.hpp"
+#include <meshgrid.hpp>
 
 #include <stdint.h>
 #include <limits>
@@ -7,7 +7,7 @@
 #include <cmath>
 
 
-
+#include <glm/glm.hpp>
 
 using uint = uint32_t;
 using int32 = int32_t;
@@ -21,6 +21,7 @@ struct ConfigBowl
     float parab_radius;
     float hole_radius;
     float vertices_num;
+    glm::mat4 transformation;
     ConfigBowl() : a(0.0f), b(0.0f), c(0.0f), disk_radius(0.0f), parab_radius(0.0f), hole_radius(0.0f), vertices_num(0.0f) {}
     ConfigBowl(const float a_, const float b_, const float c_,
                const float disk_radius_, const float parab_radius_, const float hole_radius_,

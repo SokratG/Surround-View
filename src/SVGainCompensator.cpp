@@ -1,10 +1,13 @@
-#include "SVGainCompensator.hpp"
+#include <SVGainCompensator.hpp>
+
 #include <opencv2/stitching/detail/exposure_compensate.hpp>
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/cudaarithm.hpp>
 
 
-SVGainCompensator::SVGainCompensator(const size_t imgs_num_) : imgs_num(imgs_num_), gain_scalar(3)
+
+// ------------------------------- SVGainCompensator --------------------------------
+SVGainCompensator::SVGainCompensator(const size_t imgs_num_) : imgs_num(imgs_num_)
 {
     warp = std::move(std::vector<cv::UMat>(imgs_num));
     mask = std::move(std::vector<cv::UMat>(imgs_num));
@@ -38,9 +41,8 @@ bool SVGainCompensator::apply_compensator(const int idx, cv::cuda::GpuMat& warp_
    if (idx > imgs_num || imgs_num <= 0)
      return false;
 
-   gain_scalar[0] = gains(idx);
-   gain_scalar[1] = gains(idx);
-   gain_scalar[2] = gains(idx);
+   cv::Scalar gain_scalar(gains(idx), gains(idx), gains(idx));
+
    cv::cuda::multiply(warp_img, gain_scalar, warp_img, 1, -1, streamObj);
 
    return true;
@@ -48,6 +50,8 @@ bool SVGainCompensator::apply_compensator(const int idx, cv::cuda::GpuMat& warp_
 
 
 
+
+// ------------------------------- SVGainBlocksCompensator --------------------------------
 SVGainBlocksCompensator::SVGainBlocksCompensator(const size_t imgs_num_) : imgs_num(imgs_num_)
 {
     gain_map = std::move(std::vector<cv::cuda::GpuMat>(imgs_num));
@@ -99,8 +103,8 @@ bool SVGainBlocksCompensator::apply_compensator(const int idx, cv::cuda::GpuMat&
 
 
 
-
-SVChannelCompensator::SVChannelCompensator(const size_t imgs_num_) : imgs_num(imgs_num_), gain_scalar(3)
+// ------------------------------- SVChannelCompensator --------------------------------
+SVChannelCompensator::SVChannelCompensator(const size_t imgs_num_) : imgs_num(imgs_num_)
 {
     warp = std::move(std::vector<cv::UMat>(imgs_num));
     mask = std::move(std::vector<cv::UMat>(imgs_num));
@@ -133,16 +137,12 @@ bool SVChannelCompensator::apply_compensator(const int idx, cv::cuda::GpuMat& wa
     if (idx > imgs_num || imgs_num <= 0)
       return false;
 
-    gain_scalar[0] = gains(idx);
-    gain_scalar[1] = gains(idx);
-    gain_scalar[2] = gains(idx);
+    cv::Scalar gain_scalar(gains(idx), gains(idx), gains(idx));
 
     cv::cuda::multiply(warp_img, gain_scalar, warp_img, 1, -1, streamObj);
 
     return true;
 }
-
-
 
 
 

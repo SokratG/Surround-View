@@ -1,15 +1,13 @@
-#include "SVRender.hpp"
-#include "Bowl.hpp"
-#include <opencv2/core/opengl.hpp>
+#include <SVRender.hpp>
+
 #include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudaarithm.hpp>
-
-#include <Model.hpp>
 
 #include <cuda_gl_interop.h>
 
 SVRender::SVRender(const int32 wnd_width_, const int32 wnd_height_) :
-    wnd_width(wnd_width_), wnd_height(wnd_height_), aspect_ratio(0.f), texReady(false)
+    wnd_width(wnd_width_), wnd_height(wnd_height_), aspect_ratio(0.f), texReady(false),
+    tonemap_luminance(1.0)
 {
 
 }
@@ -38,18 +36,19 @@ void SVRender::render(const Camera& cam, const cv::cuda::GpuMat& frame)
 }
 
 
-bool SVRender::init()
+bool SVRender::init(const ConfigBowl& cbowl, const std::string& shadersurroundvert, const std::string& shadersurroundfrag,
+                    const std::string& shaderscreenvert, const std::string& shaderscreenfrag)
 {
     if (isInit)
             return isInit;
 
     aspect_ratio = static_cast<float>(wnd_width) / wnd_height;
 
-    isInit = initBowl();
+    isInit = initBowl(cbowl, shadersurroundvert, shadersurroundfrag);
     if (!isInit)
       return false;
 
-    isInit = initQuadRender();
+    isInit = initQuadRender(shaderscreenvert, shaderscreenfrag);
     if (!isInit)
       return false;
 
@@ -69,7 +68,7 @@ void SVRender::texturePrepare(const cv::cuda::GpuMat& frame)
 
 void SVRender::drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame)
 {
-    glm::mat4 model(1.f);
+    glm::mat4 model = bowlmodel.transformation;
     auto view = cam.getView();
     auto projection = glm::perspective(glm::radians(cam.getCamZoom()), aspect_ratio, 0.1f, 100.f);
 
@@ -80,6 +79,7 @@ void SVRender::drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame
     OGLbowl.OGLShader.setMat4("model", model);
     OGLbowl.OGLShader.setMat4("view", view);
     OGLbowl.OGLShader.setMat4("projection", projection);
+    OGLbowl.OGLShader.setFloat("lum_white", tonemap_luminance);
 
     texturePrepare(frame);
 
@@ -151,32 +151,25 @@ bool SVRender::addModel(const std::string& pathmodel, const std::string& pathver
 
 
 
-bool SVRender::initBowl()
+bool SVRender::initBowl(const ConfigBowl& cbowl, const std::string& shadersurroundvert, const std::string& shadersurroundfrag)
 {
-    bool isgen = OGLbowl.OGLShader.initShader("shaders/svvert.glsl", "shaders/svfrag.glsl");
+    bool isinit = OGLbowl.OGLShader.initShader(shadersurroundvert.c_str(), shadersurroundfrag.c_str());
 
-    if (!isgen)
+    if (!isinit)
         return false;
 
     glGenVertexArrays(1, &OGLbowl.VAO);
     glGenBuffers(1, &OGLbowl.VBO);
     glGenBuffers(1, &OGLbowl.EBO);
 
+    bowlmodel = cbowl;
 
-    /* Bowl parameter */
-    ConfigBowl cbowl;
-    cbowl.disk_radius = 0.3f;
-    cbowl.parab_radius = 0.5f;
-    cbowl.hole_radius = 0.07f;
-    cbowl.a = 0.4f; cbowl.b = 0.4f; cbowl.c = 0.15f;
-    cbowl.vertices_num  = 750.f;
-
-    Bowl bowl(cbowl);
+    Bowl bowl(bowlmodel);
     std::vector<float> data;
     std::vector<uint> idxs;
-    isgen = bowl.generate_mesh_uv_hole(cbowl.vertices_num, cbowl.hole_radius, data, idxs);
+    isinit = bowl.generate_mesh_uv_hole(cbowl.vertices_num, cbowl.hole_radius, data, idxs);
 
-    if (!isgen)
+    if (!isinit)
         return false;
 
 
@@ -199,11 +192,11 @@ bool SVRender::initBowl()
 }
 
 
-bool SVRender::initQuadRender()
+bool SVRender::initQuadRender(const std::string& shaderscreenvert, const std::string& shaderscreenfrag)
 {
-    auto isgen = OGLquadrender.OGLShader.initShader("shaders/frame_screenvert.glsl", "shaders/frame_screenfrag.glsl");
+    auto isinit = OGLquadrender.OGLShader.initShader(shaderscreenvert.c_str(), shaderscreenfrag.c_str());
 
-    if (!isgen)
+    if (!isinit)
         return false;
 
     constexpr float quadvert[] = {

@@ -1,5 +1,7 @@
-#include "SVCudaOGL.hpp"
+#include <SVCudaOGL.hpp>
+
 #include <opencv2/core/cuda.hpp>
+
 #include <cuda_gl_interop.h>
 
 #define GL_BGR  0x80E0

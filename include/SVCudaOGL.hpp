@@ -1,7 +1,10 @@
-#include "Shader.hpp"
+#pragma once
+#include <Shader.hpp>
 
 #include <stdint.h>
+
 #include <cuda_runtime.h>
+
 #include <opencv2/core/cuda.hpp>
 
 using uint = uint32_t;

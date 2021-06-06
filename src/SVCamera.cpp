@@ -3,12 +3,16 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include <thread>
+#include <SVCamera.hpp>
 
-#include <array>
+#include <cusrc/yuv2rgb.cuh>
+
+#include <chrono>
+
 #include <fstream>
 
 #include <opencv2/calib3d.hpp>
-#include <opencv2/core/cuda.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudawarping.hpp>
 
@@ -17,10 +21,6 @@
 #include <sys/mman.h>
 
 #include <omp.h>
-
-#include "cusrc/yuv2rgb.cuh"
-
-#include "SVCamera.hpp"
 
 
 #define LOG_DEBUG(msg, ...)   printf("DEBUG:   " msg "\n", ##__VA_ARGS__)

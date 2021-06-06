@@ -1,4 +1,5 @@
 #include <SVSeamDetection.hpp>
+
 #include <opencv2/stitching/detail/exposure_compensate.hpp>
 #include <opencv2/stitching/detail/seam_finders.hpp>
 #include <opencv2/stitching/warpers.hpp>

@@ -1,9 +1,10 @@
 #pragma once
-#include <opencv2/stitching/detail/camera.hpp>
-#include <opencv2/cudaimgproc.hpp>
-
 #include <vector>
 #include <cmath>
+
+
+#include <opencv2/stitching/detail/camera.hpp>
+#include <opencv2/cudaimgproc.hpp>
 
 #define MAX_MASK_WIDTH 2000
 #define MAX_MASK_HEIGHT 1500

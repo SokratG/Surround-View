@@ -1,4 +1,4 @@
-#include "SVDisplay.hpp"
+#include <SVDisplay.hpp>
 
 
 float lastX = 1280 / 2.f; // last x pos cursor
@@ -48,7 +48,8 @@ static void processInput(GLFWwindow* window, SVDisplayView* svdisp)
         constexpr auto const_speed = 0.5f;
 
         if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS && !demo_key_press) {
-                svdisp->setDemoMode(!svdisp->getDemoMode());
+                svdisp->setTopView(false);
+                svdisp->setSVDemoMode(!svdisp->getSVDemoMode());
                 demo_key_press = true;
         }
         if (glfwGetKey(window, GLFW_KEY_V) == GLFW_RELEASE) {
@@ -56,8 +57,8 @@ static void processInput(GLFWwindow* window, SVDisplayView* svdisp)
         }
 
         if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS && !topview_key_press) {
-                if (svdisp->getDemoMode())
-                    svdisp->setTopView(!svdisp->getTopView());
+                svdisp->setSVDemoMode(false);
+                svdisp->setTopView(!svdisp->getTopView());
                 topview_key_press = true;
         }
         if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE) {
@@ -66,6 +67,8 @@ static void processInput(GLFWwindow* window, SVDisplayView* svdisp)
 
         /* reset camera position */
         if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+                svdisp->setSVDemoMode(false);
+                svdisp->setTopView(false);
                 svdisp->resetCameraState();
         }
 
@@ -89,6 +92,7 @@ bool SVDisplayView::init(const int32 wnd_width, const int32 wnd_height, std::sha
 {
         if (isInit)
                 return isInit;
+
         this->width = wnd_width;
         this->height = wnd_height;
         aspect_ratio = static_cast<float>(wnd_width) / wnd_height;
@@ -112,8 +116,7 @@ bool SVDisplayView::init(const int32 wnd_width, const int32 wnd_height, std::sha
         }
         glfwMakeContextCurrent(window);
 
-        if (!disp_view->getInit())
-            disp_view->init();
+
 
         glEnable(GL_DEPTH_TEST);
         //glDepthFunc(GL_LEQUAL);
@@ -141,7 +144,9 @@ bool SVDisplayView::render(const cv::cuda::GpuMat& frame)
         processInput(window, this);
 
         if (useDemoMode)
-            demoMode(cam);
+            demoSVMode(cam);
+        if (useTopView)
+            demoTopViewMode(cam);
 
         if (disp_view->getInit()){
             disp_view->render(cam, frame);
@@ -163,37 +168,39 @@ bool SVDisplayView::render(const cv::cuda::GpuMat& frame)
 }
 
 
+
 void SVDisplayView::resetCameraState()
 {
     cam = Camera(glm::vec3(0.0, 1.0, 1.0), glm::vec3(0.0, 1.0, 0.0));
 }
 
-void SVDisplayView::demoMode(Camera& camera)
+void SVDisplayView::demoSVMode(Camera& camera)
 {
-    if (!useTopView){
-        constexpr auto const_speed = 0.020;
-        camera.processKeyboard(Camera_Movement::LEFT, const_speed);
-        constexpr auto xoffset = 15.0;
-        camera.processMouseMovement(xoffset, 0);
-    }
-    else{
-        constexpr auto angle = -90.0;
-        constexpr auto rot_angle_x = 7.5;
-        camera.processMouseMovement(0, angle);
-        camera.processMouseMovement(rot_angle_x, 0);
-    }
+    constexpr auto const_speed = 0.020;
+    camera.processKeyboard(Camera_Movement::LEFT, const_speed);
+    constexpr auto xoffset = 12.5;
+    camera.processMouseMovement(xoffset, 0);
+}
+
+void SVDisplayView::demoTopViewMode(Camera& camera)
+{
+    constexpr auto angle = -90.0;
+    constexpr auto rot_angle_x = 7.5;
+    camera.processMouseMovement(0, angle);
+    camera.processMouseMovement(rot_angle_x, 0);
 }
 
 
 
-void SVDisplayView::setDemoMode(const bool demo)
+void SVDisplayView::setSVDemoMode(const bool demo)
 {
     useDemoMode = demo;
     resetCameraState();
-    cam.setCamPos(glm::vec3(0, 0.75, 2.0));
+    cam.setCamPos(glm::vec3(0, 1.65, 2.25));
+    cam.processMouseMovement(0, -200);
 }
 
-bool SVDisplayView::getDemoMode() const
+bool SVDisplayView::getSVDemoMode() const
 {
     return useDemoMode;
 }
@@ -202,7 +209,7 @@ void SVDisplayView::setTopView(const bool topview)
 {
     useTopView = topview;
     resetCameraState();
-    cam.setCamPos(glm::vec3(0, 3.0, 0.0));
+    cam.setCamPos(glm::vec3(0, 3.5, 0.0));
 }
 
 bool SVDisplayView::getTopView() const
