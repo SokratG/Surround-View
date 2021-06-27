@@ -1,7 +1,5 @@
 #include "yuv2rgb.cuh"
 
-
-
 __host__ inline int divUp(int a, int b){
 	return ((a % b) != 0) ? (a / b + 1) : (a / b);
 }
@@ -51,16 +49,17 @@ __global__ inline void gpuConvertUYVY2RGB_opt_kernel(uchar* src, uchar* dst, uin
 
       const int y_w = y*width;
 
-      int cb = src[y_w*2+x*4];    // U
-      int y0 = src[y_w*2+x*4+1];  // Y0
-      int cr = src[y_w*2+x*4+2];  // V
-      int y1 = src[y_w*2+x*4+3];  // Y1
-      y0 -= 16;
-      y1 -= 16;
-      cb -= 128;
-      cr -= 128;
+      float cb = src[y_w*2+x*4];    // U
+      float y0 = src[y_w*2+x*4+1];  // Y0
+      float cr = src[y_w*2+x*4+2];  // V
+      float y1 = src[y_w*2+x*4+3];  // Y1
 
-#define YUV_I
+      //y0 -= 16.0f;
+      //y1 -= 16.0f;
+      cb -= 128.0f;
+      cr -= 128.0f;
+
+//#define YUV_I
 #ifdef YUV_I
 
       dst[y_w*3+x*6]   = clamp(1.164f * y0 + 2.018f * cb, 0.0f, 255.f);
@@ -73,13 +72,13 @@ __global__ inline void gpuConvertUYVY2RGB_opt_kernel(uchar* src, uchar* dst, uin
 
 #else
 
-      dst[y_w*3+x*6]   = clamp(1.164f * y0 + 1.596f * cb, 0.0f, 255.f);
-      dst[y_w*3+x*6+1] = clamp(1.164f * y0 - 0.391f * cr - 0.812f * cb, .0f, 255.f);
-      dst[y_w*3+x*6+2] = clamp(1.164f * y0 + 2.017f * cr, 0.0f, 255.f);
+      dst[y_w*3+x*6]   = clamp(y0 + 1.770f * cb, 0.0f, 255.f);
+      dst[y_w*3+x*6+1] = clamp(y0 - 0.344f * cb - 0.714f * cr, .0f, 255.f);
+      dst[y_w*3+x*6+2] = clamp(y0 + 1.403f * cr, 0.0f, 255.f);
 
-      dst[y_w*3+x*6+3] = clamp(1.164f * y1 + 1.596f * cb, 0.0f, 255.f);
-      dst[y_w*3+x*6+4] = clamp(1.164f * y1 - 0.391f * cr - 0.812f * cb, .0f, 255.f);
-      dst[y_w*3+x*6+5] = clamp(1.164f * y1 + 2.017f * cr, 0.0f, 255.f);
+      dst[y_w*3+x*6+3] = clamp(y1 + 1.770f * cb, 0.0f, 255.f);
+      dst[y_w*3+x*6+4] = clamp(y1 - 0.344f * cb - 0.714f * cr, .0f, 255.f);
+      dst[y_w*3+x*6+5] = clamp(y1 + 1.403f * cr, 0.0f, 255.f);
 
 #endif
 
