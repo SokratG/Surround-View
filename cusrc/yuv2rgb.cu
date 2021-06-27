@@ -1,5 +1,7 @@
 #include "yuv2rgb.cuh"
 
+
+
 __host__ inline int divUp(int a, int b){
 	return ((a % b) != 0) ? (a / b + 1) : (a / b);
 }
@@ -48,20 +50,38 @@ __global__ inline void gpuConvertUYVY2RGB_opt_kernel(uchar* src, uchar* dst, uin
 
 
       const int y_w = y*width;
-      int cb = src[y_w*2+x*4];
-      int y0 = src[y_w*2+x*4+1];
-      int cr = src[y_w*2+x*4+2];
-      int y1 = src[y_w*2+x*4+3];
 
-      dst[y_w*3+x*6]   = clamp(1.164f * (y0 - 16)                       + 2.018f * (cb - 128), .0f, 255.f);
-      dst[y_w*3+x*6+1] = clamp(1.164f * (y0 - 16) - 0.813f * (cr - 128) - 0.391f * (cb - 128), .0f, 255.f);
-      dst[y_w*3+x*6+2] = clamp(1.164f * (y0 - 16) + 1.596f * (cr - 128),                       .0f, 255.f);
+      int cb = src[y_w*2+x*4];    // U
+      int y0 = src[y_w*2+x*4+1];  // Y0
+      int cr = src[y_w*2+x*4+2];  // V
+      int y1 = src[y_w*2+x*4+3];  // Y1
+      y0 -= 16;
+      y1 -= 16;
+      cb -= 128;
+      cr -= 128;
 
-      dst[y_w*3+x*6+3] = clamp(1.164f * (y1 - 16)                       + 2.018f * (cb - 128), .0f, 255.f);
-      dst[y_w*3+x*6+4] = clamp(1.164f * (y1 - 16) - 0.813f * (cr - 128) - 0.391f * (cb - 128), .0f, 255.f);
-      dst[y_w*3+x*6+5] = clamp(1.164f * (y1 - 16) + 1.596f * (cr - 128),                       .0f, 255.f);
+#define YUV_I
+#ifdef YUV_I
 
+      dst[y_w*3+x*6]   = clamp(1.164f * y0 + 2.018f * cb, 0.0f, 255.f);
+      dst[y_w*3+x*6+1] = clamp(1.164f * y0 - 0.813f * cr - 0.391f * cb, .0f, 255.f);
+      dst[y_w*3+x*6+2] = clamp(1.164f * y0 + 1.596f * cr, 0.0f, 255.f);
 
+      dst[y_w*3+x*6+3] = clamp(1.164f * y1 + 2.018f * cb, 0.0f, 255.f);
+      dst[y_w*3+x*6+4] = clamp(1.164f * y1 - 0.813f * cr - 0.391f * cb, .0f, 255.f);
+      dst[y_w*3+x*6+5] = clamp(1.164f * y1 + 1.596f * cr, 0.0f, 255.f);
+
+#else
+
+      dst[y_w*3+x*6]   = clamp(1.164f * y0 + 1.596f * cb, 0.0f, 255.f);
+      dst[y_w*3+x*6+1] = clamp(1.164f * y0 - 0.391f * cr - 0.812f * cb, .0f, 255.f);
+      dst[y_w*3+x*6+2] = clamp(1.164f * y0 + 2.017f * cr, 0.0f, 255.f);
+
+      dst[y_w*3+x*6+3] = clamp(1.164f * y1 + 1.596f * cb, 0.0f, 255.f);
+      dst[y_w*3+x*6+4] = clamp(1.164f * y1 - 0.391f * cr - 0.812f * cb, .0f, 255.f);
+      dst[y_w*3+x*6+5] = clamp(1.164f * y1 + 2.017f * cr, 0.0f, 255.f);
+
+#endif
 
 }
 

@@ -9,7 +9,7 @@ uniform sampler2D surroundTexture;
 const lowp float gamma_coef = 2.2f;
 const lowp float blend_factor = 1.75f;
 const lowp vec3 lum_vec = vec3(0.2126f, 0.7152f, 0.0722f);
-const lowp float lum_max_white = 0.9f;
+const lowp float lum_thresh_white = 0.85f;
 
 
 uniform highp float lum_white;
@@ -75,7 +75,7 @@ void main()
 
 	highp vec3 color = compute_tex_mix();
 	
-	highp float white_luminance = lum_max_white < lum_white ? lum_max_white : lum_white; 
+	highp float white_luminance = lum_white > lum_thresh_white ? lum_thresh_white : lum_white; 
 
 	color = reinhard_tonemap(color, white_luminance);
 

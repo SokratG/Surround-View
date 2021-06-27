@@ -4,7 +4,7 @@
 
 #include <omp.h>
 
-#define GL_USE
+//#define GL_USE
 
 #ifndef GL_USE
 #include <opencv2/highgui.hpp>
@@ -168,7 +168,7 @@ void SVApp::run()
             const auto dt = now - lastTick;
             lastTick = now;
             const int dtMs = std::chrono::duration_cast<std::chrono::milliseconds>(dt).count();
-            eventTask(dtMs, cameradata);
+            eventTask(dtMs, cameradata, stitch_frame);
 #ifdef LOG_USE
             std::cout << "dt = " << dtMs << " ms\n";
 #endif
@@ -178,17 +178,24 @@ void SVApp::run()
 
 
 
-void SVApp::eventTask(int dtms, const std::vector<cv::cuda::GpuMat>& datas)
+void SVApp::eventTask(int dtms, const std::vector<cv::cuda::GpuMat>& datas, const cv::cuda::GpuMat& stitched_img)
 {
     time_recompute_gain += dtms;
-    if (std::chrono::milliseconds(time_recompute_gain) > svappcfg.time_recompute_photometric){
+    if (std::chrono::milliseconds(time_recompute_gain) >= svappcfg.time_recompute_photometric_gain){
            time_recompute_gain = 0;
            threadpool.enqueue([=](){
-                svtitch->recomputeGain_Luminance(datas);
+                svtitch->recomputeGain(datas);
                 std::this_thread::sleep_for(1ms);
            });
     }
-
+    time_recompute_max_luminance += dtms;
+    if (std::chrono::milliseconds(time_recompute_max_luminance) >= svappcfg.time_recompute_photometric_luminance){
+           time_recompute_max_luminance = 0;
+           threadpool.enqueue([=](){
+                svtitch->recomputeLuminance(stitched_img);
+                std::this_thread::sleep_for(1ms);
+           });
+    }
 
 }
 

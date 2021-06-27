@@ -32,7 +32,8 @@ private:
         std::shared_ptr<SVMultiBandBlender> cuBlender;
         std::shared_ptr<SVChannelCompensator> svGainComp;
         // --------------
-        std::vector<cv::cuda::GpuMat> warp_gain_gpu, gpu_scale, gpu_gray;
+        std::vector<cv::cuda::GpuMat> warp_gain_gpu, gpu_scale;
+        cv::cuda::GpuMat gpu_lum_gray, lum_mean_std;
         float tonemap_luminance;
         // --------------
         bool isInit = false;
@@ -46,7 +47,8 @@ private:
         bool getDataFromFile(const std::string& dirpath, std::vector<cv::Mat>& Ks_f, std::vector<cv::Mat>& R, float& warp_scale, const bool use_filewarp_pts);
         void splitRearView(std::vector<cv::cuda::GpuMat>& imgs);
         void detectCorners(const cv::Mat& src, cv::Point& tl, cv::Point& bl, cv::Point& tr, cv::Point& br);
-        void computeGain_MaxLuminance(const std::vector<cv::cuda::GpuMat>& gpu_imgs, const std::vector<cv::cuda::GpuMat>& gpu_warped_mask);
+        void computeGains(const std::vector<cv::cuda::GpuMat>& gpu_imgs, const std::vector<cv::cuda::GpuMat>& gpu_warped_mask);
+        void computeMaxLuminance(const cv::cuda::GpuMat& img);
         /* //avoid alloc-dealloc, try implement cuda split rear view
          * void cuSplitRearView(std::vector<cv::cuda::GpuMat>& imgs);
         */
@@ -62,7 +64,8 @@ public:
         bool init(const std::vector<cv::cuda::GpuMat>& imgs);
         bool initFromFile(const std::string& dirpath, const std::vector<cv::cuda::GpuMat>& imgs, const bool use_filewarp_pts=false);
         bool stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& blend_img);
-        void recomputeGain_Luminance(const std::vector<cv::cuda::GpuMat>& gpu_imgs);
+        void recomputeGain(const std::vector<cv::cuda::GpuMat>& gpu_imgs);
+        void recomputeLuminance(const cv::cuda::GpuMat& img);
 };
 
 

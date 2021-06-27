@@ -73,9 +73,8 @@ bool SVStitcher::init(const std::vector<cv::cuda::GpuMat>& imgs){
 
         warp_gain_gpu = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
         gpu_scale = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
-        gpu_gray = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
         svGainComp = std::make_shared<SVChannelCompensator>(imgs_num);
-        computeGain_MaxLuminance(imgs_, gpu_seam_masks);
+        computeGains(imgs_, gpu_seam_masks);
 
         gpu_warped_ = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
         gpu_warped_s_ = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
@@ -147,9 +146,8 @@ bool SVStitcher::initFromFile(const std::string& dirpath, const std::vector<cv::
 
     warp_gain_gpu = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
     gpu_scale = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
-    gpu_gray = std::move( std::vector<cv::cuda::GpuMat>(imgs_num));
     svGainComp = std::make_shared<SVChannelCompensator>(imgs_num);
-    computeGain_MaxLuminance(imgs_, gpu_seam_masks);
+    computeGains(imgs_, gpu_seam_masks);
 
     if (!use_filewarp_pts){
         res = prepareCutOffFrame(cpu_imgs);
@@ -414,36 +412,59 @@ void SVStitcher::splitRearView(std::vector<cv::cuda::GpuMat>& imgs)
     imgs[last_idx] = half_rear;
 }
 
-void SVStitcher::computeGain_MaxLuminance(const std::vector<cv::cuda::GpuMat>& gpu_imgs, const std::vector<cv::cuda::GpuMat>& gpu_warped_mask)
+
+void SVStitcher::computeMaxLuminance(const cv::cuda::GpuMat& img)
 {
-    double max_color = 0.0, min_color = 0.0;
-    constexpr auto lum_threshold = 0.65;
+  double max_color = 0.0, min_color = 0.0;
+  constexpr auto lum_threshold = 0.75;
+  static cv::Mat host_lum_mean; // ?
+
+  cv::cuda::cvtColor(img, gpu_lum_gray, cv::COLOR_RGB2GRAY, 0, streamObj);
+
+  cv::cuda::max(gpu_lum_gray, cv::Scalar(1e-4), gpu_lum_gray, streamObj);
+
+  cv::cuda::log(gpu_lum_gray, gpu_lum_gray, streamObj);
+
+  cv::cuda::meanStdDev(gpu_lum_gray, lum_mean_std, streamObj);
+
+  lum_mean_std.download(host_lum_mean, streamObj);
+
+  cv::cuda::minMax(gpu_lum_gray, &min_color, &max_color);
+
+  float lum_mean = host_lum_mean.ptr<double>(0)[0];
+  float luminance = lum_mean / (max_color - min_color);  //(max_color - min_color) / 255.0;
+
+  if (luminance <= tonemap_luminance && luminance > lum_threshold)
+    tonemap_luminance = luminance;
+
+}
+
+void SVStitcher::computeGains(const std::vector<cv::cuda::GpuMat>& gpu_imgs, const std::vector<cv::cuda::GpuMat>& gpu_warped_mask)
+{
 
     for (auto i = 0; i < imgs_num; ++i){
 
         cv::cuda::resize(gpu_imgs[i], gpu_scale[i], cv::Size(), scale_factor, scale_factor, cv::INTER_NEAREST, loopStreamObj);
 
-        cv::cuda::remap(gpu_scale[i], warp_gain_gpu[i], texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, cv::Scalar(), loopStreamObj);
+        cv::cuda::remap(gpu_scale[i], warp_gain_gpu[i], texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, cv::Scalar(), loopStreamObj);    
 
-        cv::cuda::cvtColor(warp_gain_gpu[i], gpu_gray[i], cv::COLOR_RGB2GRAY, 0, loopStreamObj);
-
-        cv::cuda::minMax(gpu_gray[i], &min_color, &max_color);
-
-        float luminance = (max_color - min_color) / 255.0;
-
-        if (luminance <= tonemap_luminance && luminance > lum_threshold)
-          tonemap_luminance = luminance;
     }
 
     svGainComp->computeGains(corners, warp_gain_gpu, gpu_warped_mask);
 }
 
-void SVStitcher::recomputeGain_Luminance(const std::vector<cv::cuda::GpuMat>& gpu_imgs)
+void SVStitcher::recomputeGain(const std::vector<cv::cuda::GpuMat>& gpu_imgs)
 {
     if (!isInit)
       return;
 
-    computeGain_MaxLuminance(gpu_imgs, gpu_seam_masks);
+    computeGains(gpu_imgs, gpu_seam_masks);
 }
 
+void SVStitcher::recomputeLuminance(const cv::cuda::GpuMat& gpu_img)
+{
+    if (!isInit)
+      return;
 
+    computeMaxLuminance(gpu_img);
+}

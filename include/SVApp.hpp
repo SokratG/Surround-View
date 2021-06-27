@@ -22,8 +22,9 @@ struct SVAppConfig
     int numbands = 4;
     float scale_factor = 0.65;
     int limit_iteration_init = 5000;
-    int num_pool_threads = 1;
-    std::chrono::seconds time_recompute_photometric{10};
+    int num_pool_threads = 2;
+    std::chrono::seconds time_recompute_photometric_gain{10};
+    std::chrono::seconds time_recompute_photometric_luminance{7};
     ConfigBowl cbowl;
     std::string surroundshadervert = "shaders/surroundvert.glsl";
     std::string surroundshaderfrag = "shaders/surroundfrag.glsl";
@@ -50,10 +51,10 @@ private:
     std::array<SyncedCameraSource::Frame, CAM_NUMS> frames;
     std::vector<cv::cuda::GpuMat> cameradata;
     cv::cuda::GpuMat stitch_frame;
-    int time_recompute_gain;
+    int time_recompute_gain, time_recompute_max_luminance;
 protected:
     void release();
-    void eventTask(int dtms, const std::vector<cv::cuda::GpuMat>& datas);
+    void eventTask(int dtms, const std::vector<cv::cuda::GpuMat>& datas, const cv::cuda::GpuMat& stitched_img);
 public:
     SVApp(const SVAppConfig& svcfg);
     ~SVApp();
