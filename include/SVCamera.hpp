@@ -21,19 +21,19 @@ using uchar = unsigned char;
 #define CAMERA_WIDTH 1280
 #define CAMERA_HEIGHT 720
 
-#define BUFFER_MAP
+
 #define MMAP_BUFFERS_COUNT 4
 #define CAM_NUMS 4
 
 class CameraInfo
 {
-#ifdef BUFFER_MAP
+
 private:	
 	typedef struct _buffer{
 		void* start;
 		size_t length;
 	} buffer;
-#endif
+
 public:
 	int fd = -1;
 	std::string devicePath;
@@ -46,9 +46,9 @@ public:
 	
 	bool cuda_zero_copy = true;
 	uchar* cuda_out_buffer = nullptr;
-#ifdef BUFFER_MAP	
+
 	std::vector<buffer> buffers;
-#endif
+
 public:
 	CameraInfo(const std::string& devicePath_ ={}, const cv::Size &frameSize_ = {}) : 
 		devicePath(devicePath_), frameSize(frameSize_) {}
@@ -60,10 +60,10 @@ public:
 private:
 	bool initFormats();
 	void deinitCuda();
-#ifdef BUFFER_MAP
+
 	bool initMMap();
 	void deinitMMap();
-#endif
+
 	bool initCaps();
 	bool initStream();
 	bool initCuda();
@@ -132,9 +132,13 @@ public:
 		for (auto& cam : _cams)
 			cam.stopStream();
 
-                if (_cudaStream)
-                        cudaStreamDestroy(_cudaStream);
-                _cudaStream = NULL;
+
+                for (auto i = 0; i < _cams.size(); ++i){
+                    if (_cudaStream[i])
+                            cudaStreamDestroy(_cudaStream[i]);
+                    _cudaStream[i] = NULL;
+                }
+
 	}
 public:
 	const CameraInfo& getCamera(int index) const { return _cams[index]; }
@@ -148,7 +152,7 @@ public:
 	
 private:
         std::array<v4l2_buffer, CAM_NUMS> buffs{};
-        cudaStream_t _cudaStream {NULL};
+        cudaStream_t _cudaStream[CAM_NUMS] {NULL};
         cv::cuda::Stream cudaStreamObj{cv::cuda::Stream::Null()};
         uchar* d_src[4]; // cuda source memory
 };

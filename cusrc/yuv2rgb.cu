@@ -12,7 +12,6 @@ __device__ inline float clamp(float val, float min, float max)
 
 
 
-
 __global__ inline void gpuConvertUYVY2RGB_kernel(uchar* src, uchar* dst, uint width, uint height)
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -67,49 +66,6 @@ __global__ inline void gpuConvertUYVY2RGB_opt_kernel(uchar* src, uchar* dst, uin
 }
 
 
-void gpuConvertUYVY2RGB(uchar* src, uchar* dst, uint width, uint height)
-{
-
-	uchar* d_src = NULL;
-	uchar* d_dst = NULL;
-	size_t planeSize = width * height * sizeof(uchar);
-
-	uint flags;
-	bool srcIsMapped = (cudaHostGetFlags(&flags, src) == cudaSuccess) && (flags & cudaHostAllocMapped);
-	bool dstIsMapped = (cudaHostGetFlags(&flags, dst) == cudaSuccess) && (flags & cudaHostAllocMapped);
-
-	if (srcIsMapped){
-		d_src = src;
-		cudaStreamAttachMemAsync(NULL, src, 0, cudaMemAttachGlobal);
-	}
-	else{
-		cudaMalloc(&d_src, planeSize * 2);
-		cudaMemcpy(d_src, src, planeSize * 2, cudaMemcpyHostToDevice);
-	}
-	if (dstIsMapped){
-		d_dst = dst;
-		cudaStreamAttachMemAsync(NULL, dst, 0, cudaMemAttachGlobal);
-	}
-	else
-		cudaMalloc(&d_dst, planeSize * 3);
-
-
-	uint blockSize = 1024;
-	uint numBlocks = (width / 2 + blockSize - 1) / blockSize;
-	gpuConvertUYVY2RGB_kernel <<<numBlocks, blockSize >>>(d_src, d_dst, width, height);
-	cudaStreamAttachMemAsync(NULL, dst, 0 , cudaMemAttachHost); // Host?
-	cudaStreamSynchronize(NULL);
-	if (!srcIsMapped){
-		cudaMemcpy(dst, d_dst, planeSize*3, cudaMemcpyDeviceToHost);
-		cudaFree(d_src);
-	}
-	if (!dstIsMapped)
-		cudaFree(d_dst);
-
-}
-
-
-
 void gpuConvertUYVY2RGB_async(uchar* src, uchar* dst, uint width, uint height, cudaStream_t stream)
 {
 
@@ -159,14 +115,14 @@ void gpuConvertUYVY2RGB_opt(uchar* src, uchar* d_src, uchar* dst, uint width, ui
 {
 	size_t planeSize = width * height * sizeof(uchar);
 
-	cudaMemcpy(d_src, src, planeSize * 2, cudaMemcpyHostToDevice);
+	cudaMemcpyAsync(d_src, src, planeSize * 2, cudaMemcpyHostToDevice, stream);
 
 	cudaStreamAttachMemAsync(stream, dst, 0 , cudaMemAttachGlobal);
 
 
 	const dim3 block(16, 16);
 	const dim3 grid(divUp(width/2, block.x), divUp(height, block.y));
-	gpuConvertUYVY2RGB_opt_kernel <<<grid, block>>>(d_src, dst, width, height);
+	gpuConvertUYVY2RGB_opt_kernel <<<grid, block, 0, stream>>>(d_src, dst, width, height);
 
 	//cudaStreamSynchronize(NULL);
 

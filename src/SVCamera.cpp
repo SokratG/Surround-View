@@ -101,10 +101,10 @@ bool CameraInfo::deinit()
 {
 	stopStream();
 
-#ifdef BUFFER_MAP
+
 
 	deinitMMap();
-#endif
+
 	::close(fd);
 	fd = -1;	
 
@@ -224,10 +224,10 @@ bool CameraInfo::initStream()
 	const auto depth = (pitch * 8) / frameSize.width;
 	frameSizeBytes = pitch * frameSize.height;
 
-#ifdef BUFFER_MAP
+
 	if (!initMMap())
 		return false;
-#endif
+
 
 	return true;
 }
@@ -266,7 +266,7 @@ void CameraInfo::deinitCuda()
 		free(cuda_out_buffer);
 }
 
-#ifdef BUFFER_MAP
+
 bool CameraInfo::initMMap()
 {
 	v4l2_requestbuffers req;
@@ -313,6 +313,7 @@ bool CameraInfo::initMMap()
 			assert(0);
 			return false;
 		}
+
 	}
 
 	LOG_DEBUG("CameraV4L2 -- mapped %zu capture buffers with mmap", buffers.size());
@@ -336,7 +337,7 @@ void CameraInfo::deinitMMap()
 	buffers.clear();
 }
 
-#endif
+
 
 bool CameraInfo::startStream()
 {
@@ -498,9 +499,9 @@ int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& 
 		return -1;
 	
 
-
-	if (cudaStreamCreate(&_cudaStream) != cudaError::cudaSuccess){
-		_cudaStream = NULL;
+	for(int i = 0; i < CAM_NUMS; ++i)
+	if (cudaStreamCreate(&_cudaStream[i]) != cudaError::cudaSuccess){
+		_cudaStream[i] = NULL;
 		LOG_ERROR("SyncedCameraSource: Failed to create cuda stream");
 	}
 
@@ -624,7 +625,7 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 		auto& dataBuffer = _cams[i].buffers[buff.index];
 		auto* cudaBuffer = _cams[i].cuda_out_buffer;
 
-		gpuConvertUYVY2RGB_opt((uchar*)dataBuffer.start, d_src[i], cudaBuffer, frameSize.width, frameSize.height, _cudaStream);
+		gpuConvertUYVY2RGB_opt((uchar*)dataBuffer.start, d_src[i], cudaBuffer, frameSize.width, frameSize.height, _cudaStream[i]);
 
 		const auto uData = cv::cuda::GpuMat(frameSize, CV_8UC3, cudaBuffer);
 
