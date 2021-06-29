@@ -48,8 +48,8 @@ static void processInput(GLFWwindow* window, SVDisplayView* svdisp)
         constexpr auto const_speed = 0.5f;
 
         if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS && !demo_key_press) {
-                svdisp->setTopView(false);
-                svdisp->setSVDemoMode(!svdisp->getSVDemoMode());
+                svdisp->setTVMode(false);
+                svdisp->setSVMode(!svdisp->getSVMode());
                 demo_key_press = true;
         }
         if (glfwGetKey(window, GLFW_KEY_V) == GLFW_RELEASE) {
@@ -57,8 +57,8 @@ static void processInput(GLFWwindow* window, SVDisplayView* svdisp)
         }
 
         if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS && !topview_key_press) {
-                svdisp->setSVDemoMode(false);
-                svdisp->setTopView(!svdisp->getTopView());
+                svdisp->setSVMode(false);
+                svdisp->setTVMode(!svdisp->getTVMode());
                 topview_key_press = true;
         }
         if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE) {
@@ -67,8 +67,8 @@ static void processInput(GLFWwindow* window, SVDisplayView* svdisp)
 
         /* reset camera position */
         if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-                svdisp->setSVDemoMode(false);
-                svdisp->setTopView(false);
+                svdisp->setSVMode(false);
+                svdisp->setTVMode(false);
                 svdisp->resetCameraState();
         }
 
@@ -143,10 +143,10 @@ bool SVDisplayView::render(const cv::cuda::GpuMat& frame)
         // input
         processInput(window, this);
 
-        if (useDemoMode)
+        if (useDemoSurroundView)
             demoSVMode(cam);
-        if (useTopView)
-            demoTopViewMode(cam);
+        if (useDemoTopView)
+            demoTVMode(cam);
 
         if (disp_view->getInit()){
             disp_view->render(cam, frame);
@@ -171,18 +171,18 @@ bool SVDisplayView::render(const cv::cuda::GpuMat& frame)
 
 void SVDisplayView::resetCameraState()
 {
-    cam = Camera(glm::vec3(0.0, 1.0, 1.0), glm::vec3(0.0, 1.0, 0.0));
+    cam = Camera(glm::vec3(0.0, 1.7, 1.0), glm::vec3(0.0, 1.0, 0.0));
 }
 
 void SVDisplayView::demoSVMode(Camera& camera)
 {
-    constexpr auto const_speed = 0.020;
+    constexpr auto const_speed = 0.03;
     camera.processKeyboard(Camera_Movement::LEFT, const_speed);
-    constexpr auto xoffset = 12.5;
+    constexpr auto xoffset = 15.0;
     camera.processMouseMovement(xoffset, 0);
 }
 
-void SVDisplayView::demoTopViewMode(Camera& camera)
+void SVDisplayView::demoTVMode(Camera& camera)
 {
     constexpr auto angle = -90.0;
     constexpr auto rot_angle_x = 7.5;
@@ -192,28 +192,28 @@ void SVDisplayView::demoTopViewMode(Camera& camera)
 
 
 
-void SVDisplayView::setSVDemoMode(const bool demo)
+void SVDisplayView::setSVMode(const bool demo)
 {
-    useDemoMode = demo;
+    useDemoSurroundView = demo;
     resetCameraState();
-    cam.setCamPos(glm::vec3(0, 1.65, 2.25));
-    cam.processMouseMovement(0, -200);
+    cam.setCamPos(glm::vec3(0, 2.5, 2.75));
+    cam.processMouseMovement(0, -315);
 }
 
-bool SVDisplayView::getSVDemoMode() const
+bool SVDisplayView::getSVMode() const
 {
-    return useDemoMode;
+    return useDemoSurroundView;
 }
 
-void SVDisplayView::setTopView(const bool topview)
+void SVDisplayView::setTVMode(const bool topview)
 {
-    useTopView = topview;
+    useDemoTopView = topview;
     resetCameraState();
-    cam.setCamPos(glm::vec3(0, 3.5, 0.0));
+    cam.setCamPos(glm::vec3(0, 4.15, 0.0));
 }
 
-bool SVDisplayView::getTopView() const
+bool SVDisplayView::getTVMode() const
 {
-    return useTopView;
+    return useDemoTopView;
 }
 

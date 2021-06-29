@@ -167,10 +167,10 @@ bool SVRender::initBowl(const ConfigBowl& cbowl, const std::string& shadersurrou
     glGenBuffers(1, &OGLbowl.EBO);
 
     bowlmodel = cbowl;
-
-    Bowl bowl(bowlmodel);
     std::vector<float> data;
     std::vector<uint> idxs;
+
+    Bowl bowl(bowlmodel);
     isinit = bowl.generate_mesh_uv_hole(cbowl.vertices_num, cbowl.hole_radius, data, idxs);
 
     if (!isinit)

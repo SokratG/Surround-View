@@ -20,6 +20,7 @@ struct ConfigBowl
     float disk_radius;
     float parab_radius;
     float hole_radius;
+    float tl_x, tl_y, br_x, br_y;
     float vertices_num;
     glm::mat4 transformation;
     ConfigBowl() : a(0.0f), b(0.0f), c(0.0f), disk_radius(0.0f), parab_radius(0.0f), hole_radius(0.0f), vertices_num(0.0f) {}
@@ -79,13 +80,6 @@ public:
             return generate_mesh_(max_size_vert, vertices, indices);
     }
 
-    bool generate_mesh_uv_part(const float part_polar, const float max_size_vert, std::vector<float>& vertices, std::vector<uint>& indices)
-    {
-            set_hole = false;
-            useUV = true;
-            polar_coord = part_polar;
-            return generate_mesh_(max_size_vert, vertices, indices);
-    }
 
     bool generate_mesh_hole(const float max_size_vert, const float hole_radius, std::vector<float>& vertices, std::vector<uint>& indices)
     {
@@ -95,14 +89,6 @@ public:
             polar_coord = 2 * PI;
             return generate_mesh_(max_size_vert, vertices, indices);
     }
-    bool generate_mesh_hole_part(const float part_polar, const float max_size_vert, const float hole_radius, std::vector<float>& vertices, std::vector<uint>& indices)
-    {
-            set_hole = true;
-            useUV = false;
-            hole_rad = hole_radius;
-            polar_coord = part_polar;
-            return generate_mesh_(max_size_vert, vertices, indices);
-    }
 
     bool generate_mesh_uv_hole(const float max_size_vert, const float hole_radius, std::vector<float>& vertices, std::vector<uint>& indices)
     {
@@ -110,14 +96,6 @@ public:
             useUV = true;
             hole_rad = hole_radius;
             polar_coord = 2 * PI;
-            return generate_mesh_(max_size_vert, vertices, indices);
-    }
-    bool generate_mesh_uv_hole_part(const float part_polar, const float max_size_vert, const float hole_radius, std::vector<float>& vertices, std::vector<uint>& indices)
-    {
-            set_hole = true;
-            useUV = true;
-            hole_rad = hole_radius;
-            polar_coord = part_polar;
             return generate_mesh_(max_size_vert, vertices, indices);
     }
 
@@ -147,7 +125,7 @@ protected:
             std::vector<float> texture_u = meshgen::linspace(0.f, (1.f + eps_uv), max_size_vert);
             auto texture_v = texture_u;
 
-            auto r = meshgen::linspace(0.0f, rad, max_size_vert); // min_size = 0.f, max_size = 100.f,
+            auto r = meshgen::linspace(hole_rad, rad, max_size_vert); // min_size = 0.f, max_size = 100.f,
             auto theta = meshgen::linspace(0.f, polar_coord, max_size_vert);
             auto mesh_pair = meshgen::meshgrid(r, theta);
 
@@ -200,13 +178,6 @@ protected:
                             auto x = x_grid[j + i * grid_size];
                             auto z = z_grid[j + i * grid_size];
 
-                            if (set_hole) { // check hole inside disk
-                                    auto skip = lt_radius(x, z, hole_rad);
-                                    if (skip) {
-                                            offset_idx_min_y = i + 1;
-                                            continue;
-                                    }
-                            }
 
                             auto y = min_y;
                             if (gt_radius(x, z, inner_rad)) // check level of paraboloid
@@ -232,8 +203,8 @@ protected:
             /*
                     generate indices by y-order
             */
-            if (set_hole)
-                    idx_min_y -= offset_idx_min_y;
+
+            idx_min_y -= offset_idx_min_y;
             int32 last_vert = vertices_size / _num_vertices;
             generate_indices(indices, grid_size, idx_min_y, last_vert);
 

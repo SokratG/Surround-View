@@ -9,7 +9,7 @@
 
 
 using int32 = int32_t;
-static Camera cam(glm::vec3(0.0, 1.0, 1.0), glm::vec3(0.0, 1.0, 0.0));
+static Camera cam(glm::vec3(0.0, 1.7, 1.0), glm::vec3(0.0, 1.0, 0.0));
 
 
 class SVDisplayView
@@ -20,18 +20,18 @@ private:
         float aspect_ratio;
         std::shared_ptr<SVRender> disp_view;
         bool isInit;
-        bool useDemoMode, useTopView;
+        bool useDemoSurroundView, useDemoTopView;
 
 protected:
         void demoSVMode(Camera& camera);
-        void demoTopViewMode(Camera& camera);
+        void demoTVMode(Camera& camera);
 public:
         SVDisplayView() : window(nullptr), disp_view(nullptr)
         {
             width = 0;
             height = 0;
             isInit = false;
-            useDemoMode = useTopView = false;
+            useDemoSurroundView = useDemoTopView = false;
         }
 
         ~SVDisplayView(){glfwTerminate();}
@@ -41,10 +41,10 @@ public:
         bool render(const cv::cuda::GpuMat& frame);
 
 public:
-        void setSVDemoMode(const bool demo);
-        bool getSVDemoMode() const;
-        void setTopView(const bool topview);
-        bool getTopView() const;
+        void setSVMode(const bool demo);
+        bool getSVMode() const;
+        void setTVMode(const bool topview);
+        bool getTVMode() const;
         void resetCameraState();
 };
 
