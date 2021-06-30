@@ -125,6 +125,9 @@ bool SVApp::init(const int limit_iteration_init_)
 
                     addCar(view_scene, svappcfg);
                 }
+#else
+                if (cv::waitKey(1) > 0)
+                    break;
 #endif
                 if (limit_iteration_init > 0)
                     limit_iteration_init -= 1;

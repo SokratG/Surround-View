@@ -266,8 +266,8 @@ void SVStitcher::detectCorners(const cv::Mat& src, cv::Point& tl, cv::Point& bl,
      else
        br = right_pt_;
 
-      cv::Point pt_corner_ = cnts[0][0];
 
+      /* TODO: add - check order points of contours and change traverse points to CCW/CW */
 
       /* find rest corners side */
       for(auto i = idx_r; i < cnts[0].size() - 1; ++i){
@@ -275,17 +275,19 @@ void SVStitcher::detectCorners(const cv::Mat& src, cv::Point& tl, cv::Point& bl,
           const auto& next_pt = cnts[0][i + 1];
           auto dy = next_pt.y - pt.y;
           /* find concave */
-          if (right_pt_.y > pt.y/*?*/ && dy == 0){
-            pt_corner_ = pt;
-            break;
+          if (tr.x == 0 && tr.y == 0) /*if find top-right*/{
+              if (right_pt_.y > pt.y/*?*/ && dy == 0){
+                tr = pt;
+                break;
+              }
+          }else /*else find bottom-right*/{
+              if (right_pt_.y < pt.y && dy == 0){
+                br = pt;
+                break;
+              }
           }
+
       }
-
-      if (tr.x == 0 && tr.y == 0)
-        tr = pt_corner_;
-      else
-        br = pt_corner_;
-
 
 
       /* find rest corners side */
@@ -295,18 +297,22 @@ void SVStitcher::detectCorners(const cv::Mat& src, cv::Point& tl, cv::Point& bl,
           auto dx = cnts[0][i + 2].x - next_pt.x;
           auto dy = next_pt.y - pt.y;
           /* find concave */
-          if (dx == 0 && dy == 0){
-            pt_corner_ = pt;
-            break;
+          if (tl.x == 0 && tl.y == 0) /*if find top-left*/ {
+              if (left_pt_.y > pt.y && dx == 0 && dy == 0){
+                tl = pt;
+                break;
+              }
+          }else /*if find bottom-left*/ {
+              if (left_pt_.y < pt.y && dx == 0 && dy == 0){
+                bl = pt;
+                break;
+              }
           }
+
       }
 
-      if (tl.x == 0 && tl.y == 0)
-        tl = pt_corner_;
-      else
-        bl = pt_corner_;
-
 }
+
 
 bool SVStitcher::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
 {

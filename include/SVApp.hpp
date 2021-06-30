@@ -24,7 +24,7 @@ struct SVAppConfig
     int limit_iteration_init = 5000;
     int num_pool_threads = 2;
     std::chrono::seconds time_recompute_photometric_gain{10};
-    std::chrono::seconds time_recompute_photometric_luminance{3};
+    std::chrono::seconds time_recompute_photometric_luminance{7};
     ConfigBowl cbowl;
     std::string surroundshadervert = "shaders/surroundvert.glsl";
     std::string surroundshaderfrag = "shaders/surroundfrag.glsl";

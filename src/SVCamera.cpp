@@ -507,7 +507,7 @@ int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& 
 
 	size_t planeSize = undistSize.width * undistSize.height * sizeof(uchar);
 	for (auto i = 0; i < _cams.size(); ++i){
-	    cudaMalloc(&d_src[i], planeSize * 2);
+	    cudaMallocManaged(&d_src[i], planeSize * 2, cudaMemAttachGlobal);
 	}
 
 	for(size_t i = 0; i < buffs.size(); ++i){
@@ -515,6 +515,7 @@ int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& 
 	      std::memset(&buff, 0, sizeof(v4l2_buffer));
 	      buff.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	      buff.memory = V4L2_MEMORY_MMAP;
+	      CUHANDLE_ERROR(cudaStreamAttachMemAsync(_cudaStream[i], _cams[i].cuda_out_buffer, 0 , cudaMemAttachGlobal));
 	}
 
 	if (_undistort){
@@ -625,7 +626,7 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 		auto& dataBuffer = _cams[i].buffers[buff.index];
 		auto* cudaBuffer = _cams[i].cuda_out_buffer;
 
-		gpuConvertUYVY2RGB_opt((uchar*)dataBuffer.start, d_src[i], cudaBuffer, frameSize.width, frameSize.height, _cudaStream[i]);
+		gpuConvertUYVY2RGB_async((uchar*)dataBuffer.start, d_src[i], cudaBuffer, frameSize.width, frameSize.height, _cudaStream[i]);
 
 		const auto uData = cv::cuda::GpuMat(frameSize, CV_8UC3, cudaBuffer);
 
