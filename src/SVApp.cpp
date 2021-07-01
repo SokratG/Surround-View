@@ -4,7 +4,7 @@
 
 #include <omp.h>
 
-//#define GL_USE
+#define GL_USE
 
 #ifndef GL_USE
 #include <opencv2/highgui.hpp>
@@ -89,6 +89,8 @@ bool SVApp::init(const int limit_iteration_init_)
                 return false;
         }
 
+        usePedDetect = svappcfg.usePedestrianDetection;
+
 #ifndef GL_USE
         cv::namedWindow(svappcfg.win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
         cv::namedWindow(svappcfg.win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
@@ -98,6 +100,9 @@ bool SVApp::init(const int limit_iteration_init_)
         view_scene = std::make_shared<SVRender>(cameraSize.width, cameraSize.height);
         dp = std::make_shared<SVDisplayView>();
         svtitch = std::make_shared<SVStitcher>(svappcfg.numbands, svappcfg.scale_factor);
+        if (usePedDetect)
+            sv_ped_det = std::make_shared<SVPedDetect>();
+
         //cv::VideoWriter invid("stream.avi", cv::VideoWriter::fourcc('D', 'I', 'V', 'X'), 20, cameraSize);
 
         auto init = false;
@@ -153,6 +158,10 @@ void SVApp::run()
               cameradata[i] = frames[i -1].gpuFrame;
 
             svtitch->stitch(cameradata, stitch_frame);
+
+            if (usePedDetect)
+                sv_ped_det->detect(stitch_frame, pedestrian_rect);
+
 
 #ifdef GL_USE
             view_scene->setLuminance(svtitch->getLuminance());

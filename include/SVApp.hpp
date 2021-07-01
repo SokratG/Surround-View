@@ -2,6 +2,7 @@
 #include <SVCamera.hpp>
 #include <SVStitcher.hpp>
 #include <SVDisplay.hpp>
+#include <SVPedestrian.hpp>
 
 #include <ThreadPool.hpp>
 
@@ -30,6 +31,7 @@ struct SVAppConfig
     std::string surroundshaderfrag = "shaders/surroundfrag.glsl";
     std::string screenshadervert = "shaders/frame_screenvert.glsl";
     std::string screenshaderfrag = "shaders/frame_screenfrag.glsl";
+    bool usePedestrianDetection = false;
 };
 
 
@@ -48,10 +50,13 @@ private:
     std::shared_ptr<SVRender> view_scene;
     std::shared_ptr<SVDisplayView> dp;
     std::shared_ptr<SVStitcher> svtitch;
+    std::shared_ptr<SVPedDetect> sv_ped_det;
     std::array<SyncedCameraSource::Frame, CAM_NUMS> frames;
     std::vector<cv::cuda::GpuMat> cameradata;
+    std::vector<cv::Rect> pedestrian_rect;
     cv::cuda::GpuMat stitch_frame;
     int time_recompute_gain, time_recompute_max_luminance;
+    bool usePedDetect;
 protected:
     void release();
     void eventTask(int dtms, const std::vector<cv::cuda::GpuMat>& datas, const cv::cuda::GpuMat& stitched_img);
