@@ -153,7 +153,6 @@ MaterialInfo Model::processMaterial(aiMaterial* material)
 
 
 
-
 std::vector<Texture> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType type, const TexType typeName)
 {
     std::vector<Texture> texs;
@@ -201,8 +200,6 @@ void Model::Draw(Shader& shader)
 
 
 
-
-
 uint TextureFromFile(const char* path, const std::string& directory)
 {
     std::string filename = std::string(path);
@@ -244,8 +241,4 @@ uint TextureFromFile(const char* path, const std::string& directory)
 
     return textureID;
 }
-
-
-
-
 

@@ -1,23 +1,26 @@
 #include <SVGainCompensator.hpp>
 
-#include <opencv2/stitching/detail/exposure_compensate.hpp>
+
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/cudaarithm.hpp>
 
 
 
 // ------------------------------- SVGainCompensator --------------------------------
-SVGainCompensator::SVGainCompensator(const size_t imgs_num_) : imgs_num(imgs_num_)
+SVGainCompensator::SVGainCompensator(const size_t imgs_num_, const int nr_feeds) : imgs_num(imgs_num_)
 {
     warp = std::move(std::vector<cv::UMat>(imgs_num));
     mask = std::move(std::vector<cv::UMat>(imgs_num));
+    compens = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN);
+    cv::detail::GainCompensator* gain_comp = dynamic_cast<cv::detail::GainCompensator*>(compens.get());
+    gain_comp->setNrFeeds(nr_feeds);
 }
 
 
 void SVGainCompensator::computeGains(const std::vector<cv::Point>& corners, const std::vector<cv::cuda::GpuMat>& warp_imgs,
                                      const std::vector<cv::cuda::GpuMat>& warp_masks)
 {
-    cv::Ptr<cv::detail::ExposureCompensator> compens = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN);
+
     for (auto i = 0; i < imgs_num; ++i){
         warp_imgs[i].download(warp[i]);
         warp_masks[i].download(mask[i]);
@@ -52,19 +55,24 @@ bool SVGainCompensator::apply_compensator(const int idx, cv::cuda::GpuMat& warp_
 
 
 // ------------------------------- SVGainBlocksCompensator --------------------------------
-SVGainBlocksCompensator::SVGainBlocksCompensator(const size_t imgs_num_) : imgs_num(imgs_num_)
+SVGainBlocksCompensator::SVGainBlocksCompensator(const size_t imgs_num_, const int bl_width,
+                                                 const int bl_height, const int nr_feeds) : imgs_num(imgs_num_)
 {
     gain_map = std::move(std::vector<cv::cuda::GpuMat>(imgs_num));
     gain = std::move(std::vector<cv::cuda::GpuMat>(imgs_num));
     warp = std::move(std::vector<cv::UMat>(imgs_num));
     mask = std::move(std::vector<cv::UMat>(imgs_num));
     gain_channels = std::move(std::vector<cv::cuda::GpuMat>(3));
+    compens = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN_BLOCKS);
+    cv::detail::BlocksGainCompensator* gainbl_comp = dynamic_cast<cv::detail::BlocksGainCompensator*>(compens.get());
+    gainbl_comp ->setNrFeeds(nr_feeds);
+    gainbl_comp ->setBlockSize(bl_width, bl_height);
 }
 
 void SVGainBlocksCompensator::computeGains(const std::vector<cv::Point>& corners, const std::vector<cv::cuda::GpuMat>& warp_imgs,
                   const std::vector<cv::cuda::GpuMat>& warp_masks)
 {
-    cv::Ptr<cv::detail::ExposureCompensator> compens = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN_BLOCKS);
+
     for (auto i = 0; i < imgs_num; ++i){
         warp_imgs[i].download(warp[i]);
         warp_masks[i].download(mask[i]);
@@ -84,8 +92,6 @@ void SVGainBlocksCompensator::computeGains(const std::vector<cv::Point>& corners
             cv::cuda::merge(gain_channels, gain_map[i]);
         }
     }
-
-
 }
 
 bool SVGainBlocksCompensator::apply_compensator(const int idx, cv::cuda::GpuMat& warp_img, cv::cuda::Stream& streamObj)
@@ -104,16 +110,19 @@ bool SVGainBlocksCompensator::apply_compensator(const int idx, cv::cuda::GpuMat&
 
 
 // ------------------------------- SVChannelCompensator --------------------------------
-SVChannelCompensator::SVChannelCompensator(const size_t imgs_num_) : imgs_num(imgs_num_)
+SVChannelCompensator::SVChannelCompensator(const size_t imgs_num_, const int nr_feeds) : imgs_num(imgs_num_)
 {
     warp = std::move(std::vector<cv::UMat>(imgs_num));
     mask = std::move(std::vector<cv::UMat>(imgs_num));
+    compens = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::CHANNELS);
+    cv::detail::ChannelsCompensator* ch_comp = dynamic_cast<cv::detail::ChannelsCompensator*>(compens.get());
+    ch_comp->setNrFeeds(nr_feeds);
 }
 
 void SVChannelCompensator::computeGains(const std::vector<cv::Point>& corners, const std::vector<cv::cuda::GpuMat>& warp_imgs,
                   const std::vector<cv::cuda::GpuMat>& warp_masks)
 {
-    cv::Ptr<cv::detail::ExposureCompensator> compens = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::CHANNELS);
+
     for (auto i = 0; i < imgs_num; ++i){
         warp_imgs[i].download(warp[i]);
         warp_masks[i].download(mask[i]);
@@ -143,6 +152,4 @@ bool SVChannelCompensator::apply_compensator(const int idx, cv::cuda::GpuMat& wa
 
     return true;
 }
-
-
 

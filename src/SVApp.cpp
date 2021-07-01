@@ -4,7 +4,7 @@
 
 #include <omp.h>
 
-#define GL_USE
+//#define GL_USE
 
 #ifndef GL_USE
 #include <opencv2/highgui.hpp>
@@ -201,19 +201,4 @@ void SVApp::eventTask(int dtms, const std::vector<cv::cuda::GpuMat>& datas, cons
     }
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

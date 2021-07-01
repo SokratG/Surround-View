@@ -478,13 +478,3 @@ void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::Stream& streamOb
 
 
 }
-
-
-
-
-
-
-
-
-
-

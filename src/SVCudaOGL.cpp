@@ -163,8 +163,6 @@ bool CUDA_OGL::copyTo(cv::cuda::GpuMat& frame, cudaStream_t cuStream)
 
 
 
-
-
 // ------------------------------- OGLBuffer --------------------------------
 
 OGLBuffer::OGLBuffer() : VAO(0), VBO(0), EBO(0), indexBuffer(0), framebuffer(0), renderbuffer(0), framebuffer_tex(0)
@@ -187,5 +185,4 @@ void OGLBuffer::clearBuffers()
     glDeleteRenderbuffers(1, &renderbuffer);
     glDeleteTextures(1, &framebuffer_tex);
 }
-
 
