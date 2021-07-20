@@ -396,7 +396,7 @@ bool SVStitcher::stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& b
           cuBlender->feed(gpu_warped_s_[i], i, loopStreamObj);
     }
 
-    cuBlender->blend(stitch_, streamObj);
+    cuBlender->blend(stitch_, false, streamObj);
 
     cv::cuda::remap(stitch_, stitch_ROI_, warpXmap, warpYmap, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
 

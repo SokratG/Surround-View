@@ -441,9 +441,7 @@ void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask
 
 
 
-
-#define BLUR_REMOVE
-void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::Stream& streamObj)
+void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, const bool apply_mask, cv::cuda::Stream& streamObj)
 {
     for (auto i = 0; i <= numbands; ++i){
         auto* dst_i = &gpu_dst_pyr_laplace_[i];
@@ -458,15 +456,15 @@ void SVMultiBandBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::Stream& streamOb
     }
 
     /* this remove some blur around already stitched picture, but if use warp perspective and ROI, we can skip this part */
-#ifndef BLUR_REMOVE
-    cv::cuda::GpuMat mask;
-    cv::cuda::compare(gpu_dst_band_weights_[0](dst_rc_), WEIGHT_EPS, dst_mask_, cv::CMP_GT, streamObj);
-    cv::cuda::compare(dst_mask_, 0, mask, cv::CMP_EQ, streamObj);
+    if (apply_mask){
+        cv::cuda::GpuMat mask;
+        cv::cuda::compare(gpu_dst_band_weights_[0](dst_rc_), WEIGHT_EPS, dst_mask_, cv::CMP_GT, streamObj);
+        cv::cuda::compare(dst_mask_, 0, mask, cv::CMP_EQ, streamObj);
 
-    gpu_dst_pyr_laplace_[0](dst_rc_).setTo(cv::Scalar::all(0), mask, streamObj);
-#endif
+        gpu_dst_pyr_laplace_[0](dst_rc_).setTo(cv::Scalar::all(0), mask, streamObj);
+    }
+
     gpu_dst_pyr_laplace_[0](dst_rc_).convertTo(dst, CV_8U, streamObj);
-
 
 #ifndef NO_OMP
   #pragma omp parallel for default(none)

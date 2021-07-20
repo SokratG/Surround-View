@@ -5,12 +5,16 @@
 #include <opencv2/cudaarithm.hpp>
 
 
-
-// ------------------------------- SVGainCompensator --------------------------------
-SVGainCompensator::SVGainCompensator(const size_t imgs_num_, const int nr_feeds) : imgs_num(imgs_num_)
+// ------------------------------- SVExposureCompensator --------------------------------
+SVExposureCompensator::SVExposureCompensator(const size_t imgs_num_) : imgs_num(imgs_num_)
 {
     warp = std::move(std::vector<cv::UMat>(imgs_num));
     mask = std::move(std::vector<cv::UMat>(imgs_num));
+}
+
+// ------------------------------- SVGainCompensator --------------------------------
+SVGainCompensator::SVGainCompensator(const size_t imgs_num_, const int nr_feeds) : SVExposureCompensator(imgs_num_)
+{
     compens = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN);
     cv::detail::GainCompensator* gain_comp = dynamic_cast<cv::detail::GainCompensator*>(compens.get());
     gain_comp->setNrFeeds(nr_feeds);
@@ -56,12 +60,10 @@ bool SVGainCompensator::apply_compensator(const int idx, cv::cuda::GpuMat& warp_
 
 // ------------------------------- SVGainBlocksCompensator --------------------------------
 SVGainBlocksCompensator::SVGainBlocksCompensator(const size_t imgs_num_, const int bl_width,
-                                                 const int bl_height, const int nr_feeds) : imgs_num(imgs_num_)
+                                                 const int bl_height, const int nr_feeds) : SVExposureCompensator(imgs_num_)
 {
     gain_map = std::move(std::vector<cv::cuda::GpuMat>(imgs_num));
     gain = std::move(std::vector<cv::cuda::GpuMat>(imgs_num));
-    warp = std::move(std::vector<cv::UMat>(imgs_num));
-    mask = std::move(std::vector<cv::UMat>(imgs_num));
     gain_channels = std::move(std::vector<cv::cuda::GpuMat>(3));
     compens = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN_BLOCKS);
     cv::detail::BlocksGainCompensator* gainbl_comp = dynamic_cast<cv::detail::BlocksGainCompensator*>(compens.get());
@@ -110,14 +112,13 @@ bool SVGainBlocksCompensator::apply_compensator(const int idx, cv::cuda::GpuMat&
 
 
 // ------------------------------- SVChannelCompensator --------------------------------
-SVChannelCompensator::SVChannelCompensator(const size_t imgs_num_, const int nr_feeds) : imgs_num(imgs_num_)
+SVChannelCompensator::SVChannelCompensator(const size_t imgs_num_, const int nr_feeds) : SVExposureCompensator(imgs_num_)
 {
-    warp = std::move(std::vector<cv::UMat>(imgs_num));
-    mask = std::move(std::vector<cv::UMat>(imgs_num));
     compens = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::CHANNELS);
     cv::detail::ChannelsCompensator* ch_comp = dynamic_cast<cv::detail::ChannelsCompensator*>(compens.get());
     ch_comp->setNrFeeds(nr_feeds);
 }
+
 
 void SVChannelCompensator::computeGains(const std::vector<cv::Point>& corners, const std::vector<cv::cuda::GpuMat>& warp_imgs,
                   const std::vector<cv::cuda::GpuMat>& warp_masks)
@@ -138,6 +139,7 @@ void SVChannelCompensator::computeGains(const std::vector<cv::Point>& corners, c
     for (auto i = 0; i < gains_.size(); i++){
        gains(i, 0) = gains_[i].at<double>(0, 0);
     }
+
 }
 
 

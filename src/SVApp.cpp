@@ -56,6 +56,7 @@ SVApp::SVApp(const SVAppConfig& svcfg) :
 {
     svappcfg = svcfg;
     cameradata = std::move(std::vector<cv::cuda::GpuMat>(CAM_NUMS + 1));
+    pedestrian_rect = std::move(std::vector<std::vector<cv::Rect>>(CAM_NUMS));
 }
 
 SVApp::~SVApp()
@@ -101,7 +102,7 @@ bool SVApp::init(const int limit_iteration_init_)
         dp = std::make_shared<SVDisplayView>();
         svtitch = std::make_shared<SVStitcher>(svappcfg.numbands, svappcfg.scale_factor);
         if (usePedDetect)
-            sv_ped_det = std::make_shared<SVPedDetect>();
+            sv_ped_det = std::make_shared<SVPedDetect>(CAM_NUMS, svappcfg.scale_factor);
 
         //cv::VideoWriter invid("stream.avi", cv::VideoWriter::fourcc('D', 'I', 'V', 'X'), 20, cameraSize);
 
@@ -155,13 +156,12 @@ void SVApp::run()
             }
 
             for (auto i = 1; i <= frames.size(); ++i)
-              cameradata[i] = frames[i -1].gpuFrame;
-
-            svtitch->stitch(cameradata, stitch_frame);
+              cameradata[i] = frames[i - 1].gpuFrame;
 
             if (usePedDetect)
-                sv_ped_det->detect(stitch_frame, pedestrian_rect);
+                sv_ped_det->detect(cameradata, pedestrian_rect);
 
+            svtitch->stitch(cameradata, stitch_frame);
 
 #ifdef GL_USE
             view_scene->setLuminance(svtitch->getLuminance());

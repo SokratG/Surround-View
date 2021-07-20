@@ -53,7 +53,7 @@ private:
     std::shared_ptr<SVPedDetect> sv_ped_det;
     std::array<SyncedCameraSource::Frame, CAM_NUMS> frames;
     std::vector<cv::cuda::GpuMat> cameradata;
-    std::vector<cv::Rect> pedestrian_rect;
+    std::vector<std::vector<cv::Rect>> pedestrian_rect;
     cv::cuda::GpuMat stitch_frame;
     int time_recompute_gain, time_recompute_max_luminance;
     bool usePedDetect;
