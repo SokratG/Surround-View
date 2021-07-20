@@ -111,7 +111,7 @@ void SVRender::drawModel(const Camera& cam)
 
 void SVRender::drawBlackRect(const Camera& cam)
 {
-
+    glm::mat4 model(1.f);
 }
 
 void SVRender::drawScreen(const Camera& cam)
