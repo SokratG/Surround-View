@@ -109,6 +109,11 @@ void SVRender::drawModel(const Camera& cam)
 }
 
 
+void SVRender::drawBlackRect(const Camera& cam)
+{
+
+}
+
 void SVRender::drawScreen(const Camera& cam)
 {
     OGLquadrender.OGLShader.useProgramm();

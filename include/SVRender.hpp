@@ -18,7 +18,7 @@ protected:
         void drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame);
         void drawModel(const Camera& cam);
         void drawScreen(const Camera& cam);
-
+        void drawBlackRect(const Camera& cam);
 public:  
        bool getInit() const{return isInit;}
        bool addModel(const std::string& pathmodel, const std::string& pathvertshader,
