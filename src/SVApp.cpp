@@ -115,12 +115,9 @@ bool SVApp::init(const int limit_iteration_init_)
                         std::this_thread::sleep_for(1ms);
                         continue;
                 }
-#ifndef GL_USE
-                //cv::imshow(svappcfg.win1, frames[0].gpuFrame);
-                //cv::imshow(svappcfg.win2, frames[1].gpuFrame);
-#endif
+
                 std::vector<cv::cuda::GpuMat> datas {cv::cuda::GpuMat(), frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame, frames[3].gpuFrame};
-                //auto init = sv.init(datas);
+                //init = svtitch->init(datas);
                 init = svtitch->initFromFile(svappcfg.calib_folder, datas, false);
 #ifdef GL_USE
                 if (init){
