@@ -27,7 +27,7 @@ void sig_handler(int signo)
 static void addCar(std::shared_ptr<SVRender>& view_, const SVAppConfig& svcfg)
 {
     glm::mat4 transform_car(1.f);
-    transform_car = glm::translate(transform_car, glm::vec3(0.f, 0.96f, 0.f));
+    transform_car = glm::translate(transform_car, glm::vec3(0.f, 1.01f, 0.f));
     transform_car = glm::rotate(transform_car, glm::radians(-90.f), glm::vec3(1.f, 0.f, 0.f));
     transform_car = glm::scale(transform_car, glm::vec3(0.0016f));
 
@@ -47,6 +47,7 @@ static void addBowlConfig(ConfigBowl& cbowl)
     cbowl.hole_radius = 0.09f;
     cbowl.a = 0.4f; cbowl.b = 0.4f; cbowl.c = 0.2f;
     cbowl.vertices_num  = 750.f;
+    cbowl.y_start = 1.0f;
 }
 
 
@@ -127,7 +128,8 @@ bool SVApp::init(const int limit_iteration_init_)
                     dp->init(cameraSize.width, cameraSize.height, view_scene);
 
                     view_scene->init(svappcfg.cbowl, svappcfg.surroundshadervert, svappcfg.surroundshaderfrag,
-                                     svappcfg.screenshadervert, svappcfg.screenshaderfrag);
+                                     svappcfg.screenshadervert, svappcfg.screenshaderfrag,
+                                     svappcfg.blackrectshadervert, svappcfg.blackrectshaderfrag);
 
                     addCar(view_scene, svappcfg);
                 }

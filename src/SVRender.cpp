@@ -26,6 +26,8 @@ void SVRender::render(const Camera& cam, const cv::cuda::GpuMat& frame)
 
     drawSurroundView(cam, frame);
 
+    drawBlackRect(cam);
+
     drawModel(cam);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0); // bind default framebuffer
@@ -40,7 +42,8 @@ void SVRender::render(const Camera& cam, const cv::cuda::GpuMat& frame)
 
 
 bool SVRender::init(const ConfigBowl& cbowl, const std::string& shadersurroundvert, const std::string& shadersurroundfrag,
-                    const std::string& shaderscreenvert, const std::string& shaderscreenfrag)
+                    const std::string& shaderscreenvert, const std::string& shaderscreenfrag,
+                    const std::string shaderblackrectvert, const std::string shaderblackrectfrag)
 {
     if (isInit)
             return isInit;
@@ -50,6 +53,12 @@ bool SVRender::init(const ConfigBowl& cbowl, const std::string& shadersurroundve
     isInit = initBowl(cbowl, shadersurroundvert, shadersurroundfrag);
     if (!isInit)
       return false;
+
+    if (!shaderblackrectvert.empty() && !shaderblackrectfrag.empty()){
+        isInit = initbowlBlackRect(shaderblackrectvert, shaderblackrectfrag);
+        if (!isInit)
+          return false;
+    }
 
     isInit = initQuadRender(shaderscreenvert, shaderscreenfrag);
     if (!isInit)
@@ -112,7 +121,19 @@ void SVRender::drawModel(const Camera& cam)
 void SVRender::drawBlackRect(const Camera& cam)
 {
     glm::mat4 model(1.f);
+    auto view = cam.getView();
+    auto projection = glm::perspective(glm::radians(cam.getCamZoom()), aspect_ratio, 0.1f, 100.f);
+
+    OGLblackRect.OGLShader.useProgramm();
+    OGLblackRect.OGLShader.setMat4("model", model);
+    OGLblackRect.OGLShader.setMat4("view", view);
+    OGLblackRect.OGLShader.setMat4("projection", projection);
+
+    glBindVertexArray(OGLblackRect.VAO);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
 }
+
 
 void SVRender::drawScreen(const Camera& cam)
 {
@@ -122,7 +143,6 @@ void SVRender::drawScreen(const Camera& cam)
     glBindVertexArray(OGLquadrender.VAO);
     glBindTexture(GL_TEXTURE_2D, OGLquadrender.framebuffer_tex);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
 }
 
 
@@ -176,11 +196,11 @@ bool SVRender::initBowl(const ConfigBowl& cbowl, const std::string& shadersurrou
     std::vector<uint> idxs;
 
     Bowl bowl(bowlmodel);
-    isinit = bowl.generate_mesh_uv_hole(cbowl.vertices_num, cbowl.hole_radius, data, idxs);
+    //isinit = bowl.generate_mesh_uv_hole(cbowl.vertices_num, cbowl.hole_radius, data, idxs);
+    isinit = bowl.generate_mesh_uv(cbowl.vertices_num, data, idxs);
 
     if (!isinit)
         return false;
-
 
     OGLbowl.indexBuffer = idxs.size();
 
@@ -196,6 +216,42 @@ bool SVRender::initBowl(const ConfigBowl& cbowl, const std::string& shadersurrou
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+
+    return true;
+}
+
+
+bool SVRender::initbowlBlackRect(const std::string& fileblackrectvert, const std::string& fileblackrectfrag)
+{
+
+    bool isinit = OGLblackRect.OGLShader.initShader(fileblackrectvert.c_str(), fileblackrectfrag.c_str());
+
+    if (!isinit)
+        return false;
+
+    constexpr auto bias = 1e-4;
+
+    const float y_min = bowlmodel.y_start + bias;
+
+    const float rectvert[] = {
+         0.25f,  y_min,  0.435f,
+        -0.25f,  y_min,  0.435f,
+        -0.25f,  y_min, -0.435f,
+
+         0.25f,  y_min,  0.435f,
+        -0.25f,  y_min, -0.435f,
+         0.25f,  y_min, -0.435f,
+    };
+
+    glGenVertexArrays(1, &OGLblackRect.VAO);
+    glGenBuffers(1, &OGLblackRect.VBO);
+    glGenBuffers(1, &OGLblackRect.EBO);
+
+    glBindVertexArray(OGLblackRect.VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, OGLblackRect.VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(rectvert), &rectvert, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), (void*)0);
 
     return true;
 }

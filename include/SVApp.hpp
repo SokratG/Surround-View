@@ -31,6 +31,8 @@ struct SVAppConfig
     std::string surroundshaderfrag = "shaders/surroundfrag.glsl";
     std::string screenshadervert = "shaders/frame_screenvert.glsl";
     std::string screenshaderfrag = "shaders/frame_screenfrag.glsl";
+    std::string blackrectshadervert = "shaders/blackrectshadervert.glsl";
+    std::string blackrectshaderfrag = "shaders/blackrectshaderfrag.glsl";
     bool usePedestrianDetection = false;
 };
 

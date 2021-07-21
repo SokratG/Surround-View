@@ -12,6 +12,7 @@ class SVRender
 {
 private:
         bool initBowl(const ConfigBowl& cbowl, const std::string& filesurroundvert, const std::string& filesurroundfrag);
+        bool initbowlBlackRect(const std::string& fileblackrectvert, const std::string& fileblackrectfrag);
         bool initQuadRender(const std::string& filescreenvert, const std::string& filescreenfrag);
 protected:
         void texturePrepare(const cv::cuda::GpuMat& frame);
@@ -33,12 +34,14 @@ public:
         SVRender(const SVRender&) = delete;
 	
         bool init(const ConfigBowl& cbowl, const std::string& shadersurroundvert, const std::string& shadersurroundfrag,
-                  const std::string& shaderscreenvert, const std::string& shaderscreenfrag);
+                  const std::string& shaderscreenvert, const std::string& shaderscreenfrag,
+                  const std::string shaderblackrectvert = std::string(), const std::string shaderblackrectfrag=std::string());
         void render(const Camera& cam, const cv::cuda::GpuMat& frame);
 
 private:
         ConfigBowl bowlmodel;
         OGLBuffer OGLbowl;
+        OGLBuffer OGLblackRect;
         OGLBuffer OGLquadrender;
         float aspect_ratio;
         int32  wnd_width;
