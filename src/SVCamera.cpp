@@ -507,7 +507,7 @@ int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& 
 
 	size_t planeSize = undistSize.width * undistSize.height * sizeof(uchar);
 	for (auto i = 0; i < _cams.size(); ++i){
-	    cudaMallocManaged(&d_src[i], planeSize * 2, cudaMemAttachGlobal);
+	    cudaMalloc(&d_src[i], planeSize * 2);
 	}
 
 	for(size_t i = 0; i < buffs.size(); ++i){
