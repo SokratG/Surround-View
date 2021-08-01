@@ -108,7 +108,7 @@ bool SVApp::init(const int limit_iteration_init_)
         //cv::VideoWriter invid("stream.avi", cv::VideoWriter::fourcc('D', 'I', 'V', 'X'), 20, cameraSize);
 
         auto init = false;
-        while (!svtitch->getInit() && limit_iteration_init != 0){
+        while (!svtitch->getInit() && limit_iteration_init != 0 && !finish){
 
                 if (!source->capture(frames)){
                         std::cerr << "capture failed\n";
