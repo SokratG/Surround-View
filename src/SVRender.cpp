@@ -234,13 +234,13 @@ bool SVRender::initbowlBlackRect(const std::string& fileblackrectvert, const std
     const float y_min = bowlmodel.y_start + bias;
 
     const float rectvert[] = {
-         0.25f,  y_min,  0.435f,
-        -0.25f,  y_min,  0.435f,
-        -0.25f,  y_min, -0.435f,
+         0.33f,  y_min,  0.47f,
+        -0.33f,  y_min,  0.47f,
+        -0.33f,  y_min, -0.47f,
 
-         0.25f,  y_min,  0.435f,
-        -0.25f,  y_min, -0.435f,
-         0.25f,  y_min, -0.435f,
+         0.33f,  y_min,  0.47f,
+        -0.33f,  y_min, -0.47f,
+         0.33f,  y_min, -0.47f,
     };
 
     glGenVertexArrays(1, &OGLblackRect.VAO);

@@ -325,12 +325,12 @@ bool SVStitcher::prepareCutOffFrame(const std::vector<cv::Mat>& cpu_imgs)
           }
 
 
-          cuBlender->blend(gpu_result, warp_img);
+          cuBlender->blend(gpu_result, warp_img, streamObj);
           cv::Mat result, thresh;
           gpu_result.download(result);
           warp_img.download(thresh);
 
-          //result.convertTo(result, CV_8U);
+          // result.convertTo(result, CV_8U);
 
           cv::threshold(thresh, thresh, 1, 255, cv::THRESH_BINARY);
 
@@ -401,7 +401,6 @@ bool SVStitcher::stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& b
     cv::cuda::remap(stitch_, stitch_ROI_, warpXmap, warpYmap, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(), streamObj);
 
     blend_img = stitch_ROI_(row_range, col_range);
-
 
     return true;
 }

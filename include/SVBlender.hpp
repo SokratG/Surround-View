@@ -26,6 +26,7 @@ public:
 
 public:
 	cv::cuda::GpuMat dst_, dst_mask_;
+        cv::cuda::GpuMat inter_mask;
 	cv::Rect dst_roi_;
 };
 
@@ -58,6 +59,7 @@ private:
 public:
         cv::cuda::GpuMat dst_, dst_mask_;
         cv::cuda::GpuMat dst_weight_map_;
+        cv::cuda::GpuMat inter_mask;
         cv::Rect dst_roi_;
         std::vector<cv::cuda::GpuMat> weight_maps_;
         float sharpness_;

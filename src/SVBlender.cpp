@@ -96,15 +96,14 @@ void SVBlender::blend(cv::cuda::GpuMat &dst, cv::cuda::GpuMat &dst_mask, cv::cud
 		cudaStreamSynchronize(_cudaStreamMask);
 	}
 #endif
-	cv::cuda::GpuMat mask;
-	cv::cuda::compare(dst_mask_, 0, mask, cv::CMP_EQ, streamObj);
-	dst_.setTo(cv::Scalar::all(0), mask);
-	dst_.copyTo(dst);
-	dst_mask_.copyTo(dst_mask);
 
-	dst_.release();
-	dst_mask_.release();
+	cv::cuda::compare(dst_mask_, 0, inter_mask, cv::CMP_EQ, streamObj);
+	dst_.setTo(cv::Scalar::all(0), inter_mask, streamObj);
+	dst_.convertTo(dst, CV_8U, streamObj);
+	dst_mask_.copyTo(dst_mask, streamObj);
 
+	dst_.setTo(cv::Scalar::all(0), cv::noArray(), streamObj);
+	dst_mask_.setTo(cv::Scalar::all(0), cv::noArray(), streamObj);
 }
 
 
@@ -209,15 +208,15 @@ void SVFeatherBlender::feed(cv::cuda::GpuMat& _img, cv::cuda::GpuMat& _mask, con
 
      cv::cuda::compare(dst_weight_map_, WEIGHT_EPS, dst_mask_, cv::CMP_GT, streamObj);
 
-     cv::cuda::GpuMat mask;
-     cv::cuda::compare(dst_mask_, 0, mask, cv::CMP_EQ, streamObj);
-     dst_.setTo(cv::Scalar::all(0), mask, streamObj);
-     dst_.copyTo(dst, streamObj);
+
+     cv::cuda::compare(dst_mask_, 0, inter_mask, cv::CMP_EQ, streamObj);
+     dst_.setTo(cv::Scalar::all(0), inter_mask, streamObj);
+     dst_.convertTo(dst, CV_8U, streamObj);
      dst_mask_.copyTo(dst_mask, streamObj);
 
-     dst_.setTo(cv::Scalar::all(0));
-     dst_mask_.setTo(cv::Scalar::all(0));
-     dst_weight_map_.setTo(cv::Scalar::all(0));
+     dst_.setTo(cv::Scalar::all(0), cv::noArray(), streamObj);
+     dst_mask_.setTo(cv::Scalar::all(0), cv::noArray(), streamObj);
+     dst_weight_map_.setTo(cv::Scalar::all(0), cv::noArray(), streamObj);
  }
 
 

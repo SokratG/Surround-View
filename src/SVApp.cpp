@@ -29,7 +29,7 @@ static void addCar(std::shared_ptr<SVRender>& view_, const SVAppConfig& svcfg)
     glm::mat4 transform_car(1.f);
     transform_car = glm::translate(transform_car, glm::vec3(0.f, 1.01f, 0.f));
     transform_car = glm::rotate(transform_car, glm::radians(-90.f), glm::vec3(1.f, 0.f, 0.f));
-    transform_car = glm::scale(transform_car, glm::vec3(0.0016f));
+    transform_car = glm::scale(transform_car, glm::vec3(0.0018f));
 
     bool is_Add = view_->addModel(svcfg.car_model, svcfg.car_vert_shader,
                     svcfg.car_frag_shader, transform_car);
