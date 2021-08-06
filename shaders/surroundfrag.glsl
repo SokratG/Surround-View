@@ -6,13 +6,15 @@ out highp vec4 FragColor;
 
 uniform sampler2D surroundTexture;
 
-const lowp float gamma_coef = 2.0f;
+const lowp float gamma_coef = 2.2f;
 const lowp float blend_factor = 1.75f;
 const lowp vec3 lum_vec = vec3(0.2126f, 0.7152f, 0.0722f);
 const lowp float lum_thresh_white = 0.85f;
 
 
+
 uniform highp float lum_white;
+uniform highp float lum_map;
 
 highp vec3 gamma_correction(const highp vec3 color, const lowp float g_coef)
 {	
@@ -45,7 +47,7 @@ highp vec3 compute_tex_mix()
 // Reinhard tonemap algorithm
 highp float luminance(const highp vec3 v)
 {
-	return dot(v, lum_vec);
+	return dot(v, vec3(lum_map, lum_map, lum_map));
 }
 
 highp vec3 change_luminance(const highp vec3 c_in, const highp float l_out)
@@ -70,8 +72,7 @@ highp vec3 reinhard_jodie_tonemap(vec3 c_in)
 }
 
 void main()
-{ 
-	
+{ 	
 
 	highp vec3 color = compute_tex_mix();
 	

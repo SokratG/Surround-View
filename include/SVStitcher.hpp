@@ -33,8 +33,8 @@ private:
         std::shared_ptr<SVChannelCompensator> svGainComp;
         // --------------
         std::vector<cv::cuda::GpuMat> warp_gain_gpu, gpu_scale;
-        cv::cuda::GpuMat gpu_lum_gray, lum_mean_std;
-        float tonemap_luminance;
+        cv::cuda::GpuMat gpu_lum_gray, lum_mean_std, log_lum_map;
+        float white_luminance, tonemap_luminance;
         // --------------
         bool isInit = false;
 private:
@@ -58,9 +58,12 @@ public:
         void setNumbands(const size_t numbands_){ numbands = numbands_;}
         size_t getNumbands() const { return numbands;}
         float getLuminance() const {return tonemap_luminance;}
+        float getWhiteLuminance() const {return white_luminance;}
 public:
         SVStitcher(const size_t numbands_ = 4, const float scale_factor_ = 1.0) :
-            cuBlender(nullptr), numbands(numbands_), scale_factor(scale_factor_), tonemap_luminance(1.0) {}
+            cuBlender(nullptr), numbands(numbands_), scale_factor(scale_factor_),
+            white_luminance(1.0), tonemap_luminance(1.0)
+        {}
         bool init(const std::vector<cv::cuda::GpuMat>& imgs);
         bool initFromFile(const std::string& dirpath, const std::vector<cv::cuda::GpuMat>& imgs, const bool use_filewarp_pts=false);
         bool stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& blend_img);

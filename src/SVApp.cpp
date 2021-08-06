@@ -163,7 +163,8 @@ void SVApp::run()
             svtitch->stitch(cameradata, stitch_frame);
 
 #ifdef GL_USE
-            view_scene->setLuminance(svtitch->getLuminance());
+            view_scene->setWhiteLuminance(svtitch->getWhiteLuminance());
+            view_scene->setToneLuminance(svtitch->getLuminance());
 
             bool okRender = dp->render(stitch_frame);
             if (!okRender)

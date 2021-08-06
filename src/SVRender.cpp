@@ -8,7 +8,7 @@
 
 SVRender::SVRender(const int32 wnd_width_, const int32 wnd_height_) :
     wnd_width(wnd_width_), wnd_height(wnd_height_), aspect_ratio(0.f), texReady(false),
-    tonemap_luminance(1.0)
+    white_luminance(1.0), tonemap_luminance(1.0)
 {
 
 }
@@ -91,7 +91,8 @@ void SVRender::drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame
     OGLbowl.OGLShader.setMat4("model", model);
     OGLbowl.OGLShader.setMat4("view", view);
     OGLbowl.OGLShader.setMat4("projection", projection);
-    OGLbowl.OGLShader.setFloat("lum_white", tonemap_luminance);
+    OGLbowl.OGLShader.setFloat("lum_white", white_luminance);
+    OGLbowl.OGLShader.setFloat("lum_map", tonemap_luminance);
 
     texturePrepare(frame);
 

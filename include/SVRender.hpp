@@ -24,8 +24,10 @@ public:
        bool getInit() const{return isInit;}
        bool addModel(const std::string& pathmodel, const std::string& pathvertshader,
                      const std::string& pathfragshader, const glm::mat4& mat_transform);
-       float getLuminance() const{return tonemap_luminance;}
-       void setLuminance(const float tonemap_luminance_) {tonemap_luminance = tonemap_luminance_;}
+       float getWhiteLuminance() const{return white_luminance;}
+       void setWhiteLuminance(const float white_luminance_) {white_luminance = white_luminance_;}
+       float getToneLuminance() const{return tonemap_luminance;}
+       void setToneLuminance(const float tone_luminance_) {tonemap_luminance = tone_luminance_;}
 
 public:
         SVRender(const int32 wnd_width_, const int32 wnd_height_);
@@ -47,7 +49,7 @@ private:
         int32  wnd_width;
         int32  wnd_height;
         CUDA_OGL cuOgl;
-        float tonemap_luminance;
+        float white_luminance, tonemap_luminance;
 private:
         std::vector<Model> models;
         std::vector<std::shared_ptr<Shader>> modelshaders;

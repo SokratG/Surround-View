@@ -417,23 +417,32 @@ void SVStitcher::splitRearView(std::vector<cv::cuda::GpuMat>& imgs)
     imgs[last_idx] = half_rear;
 }
 
-
 void SVStitcher::computeMaxLuminance(const cv::cuda::GpuMat& img)
 {
   double max_color = 0.0, min_color = 0.0;
   constexpr auto min_lum_threshold = 0.75f;
-  constexpr auto min_threshold = 25.f;
+  constexpr auto key_value = 0.36;
+  constexpr auto min_threshold = 1.0f;
 
   cv::cuda::cvtColor(img, gpu_lum_gray, cv::COLOR_RGB2GRAY, 0, streamObj);
 
   cv::cuda::max(gpu_lum_gray, cv::Scalar(min_threshold), gpu_lum_gray, streamObj);
 
+  cv::cuda::log(gpu_lum_gray, log_lum_map, streamObj);
+
+  cv::Scalar sumlog = cv::cuda::sum(log_lum_map);
+
+  const auto N = gpu_lum_gray.rows * gpu_lum_gray.cols;
+  const float lum_key = key_value / (sumlog[0] / N);
+
   cv::cuda::minMax(gpu_lum_gray, &min_color, &max_color);
 
   float luminance = (max_color - min_color) / 255.0f;
 
-  if (luminance <= tonemap_luminance && luminance > min_lum_threshold)
-    tonemap_luminance = luminance;
+  if (luminance <= white_luminance && luminance > min_lum_threshold)
+    white_luminance = luminance;
+
+  tonemap_luminance = lum_key;
 
 }
 
