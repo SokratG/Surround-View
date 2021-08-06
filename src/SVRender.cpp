@@ -3,8 +3,6 @@
 #include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudaarithm.hpp>
 
-#include <cuda_gl_interop.h>
-
 
 SVRender::SVRender(const int32 wnd_width_, const int32 wnd_height_) :
     wnd_width(wnd_width_), wnd_height(wnd_height_), aspect_ratio(0.f), texReady(false),
