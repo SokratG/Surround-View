@@ -1,5 +1,5 @@
 ## The 3D surround view on Jetson Tegra TX2 platform - this is my research project for master thesis.
-### The essence of the project is a high-quality stitching of images from four cameras and projecting the image onto a mesh model with acceptable performance. The project work on ~20 fps with constraints from the connection adaptor 30 fps due the synchronize frames mode. 
+### The essence of the project is to build a high-quality stitching of images from four cameras and project the image onto a mesh model with acceptable performance. The project work on ~20 fps with constraints from the connection adaptor 30 fps due the synchronize frames mode. 
 
 ### My research papers:
 - In progress ...
