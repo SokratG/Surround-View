@@ -429,6 +429,7 @@ void SVStitcher::computeMaxLuminance(const cv::cuda::GpuMat& img)
   cv::cuda::max(gpu_lum_gray, cv::Scalar(min_threshold), gpu_lum_gray, streamObj);
 
   cv::cuda::log(gpu_lum_gray, log_lum_map, streamObj);
+  cv::cuda::exp(log_lum_map, log_lum_map, streamObj);
 
   cv::Scalar sumlog = cv::cuda::sum(log_lum_map);
 
