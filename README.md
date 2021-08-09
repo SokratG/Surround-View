@@ -1,7 +1,11 @@
 ## The 3D surround view on Jetson Tegra TX2 platform - this is my research project for master thesis.
 The essence of the project is to build a good quality stitching of images from 4 cameras and project the image onto a mesh model with acceptable performance. The project work on ~20 fps with constraints from the connection adaptor 30 fps due the synchronize frames mode. 
 
-### This is a research project, and for a production surround view application, I recommend using the [Intel/libxcam](https://github.com/intel/libxcam) library.
+##
+
+<b>This is a research project, and for a production surround view application, I recommend using the [Intel/libxcam](https://github.com/intel/libxcam) library.</b>
+
+##
 
 ### My research papers:
 - In progress ...
@@ -31,7 +35,7 @@ The essence of the project is to build a good quality stitching of images from 4
 | Embedded platform | Jetson Tegra TX2 |
 | Tripod | - |
 
-<img src="gitresource/camerasetup.jpg" style="width: 58%; height: auto">
+<img src="gitresource/camerasetup.jpg" width="49%" height="auto">
 
 ### The software setup:
 * OS - Linux Ubuntu LTS v16.04
