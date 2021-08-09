@@ -1,5 +1,7 @@
 ## The 3D surround view on Jetson Tegra TX2 platform - this is my research project for master thesis.
-### The essence of the project is to build a high-quality stitching of images from four cameras and project the image onto a mesh model with acceptable performance. The project work on ~20 fps with constraints from the connection adaptor 30 fps due the synchronize frames mode. 
+The essence of the project is to build a good quality stitching of images from 4 cameras and project the image onto a mesh model with acceptable performance. The project work on ~20 fps with constraints from the connection adaptor 30 fps due the synchronize frames mode. 
+
+### This is a research project, and for a production surround view application, I recommend using the [Intel/libxcam](https://github.com/intel/libxcam) library.
 
 ### My research papers:
 - In progress ...
@@ -28,19 +30,19 @@
 | Connecting wires | High-speed 2-lane MIPI CSI-2 |
 | Embedded platform | Jetson Tegra TX2 |
 | Tripod | - |
-### The hardware setup photo:
-<img src="gitresource/camerasetup.jpg">
+
+<img src="gitresource/camerasetup.jpg" style="width: 58%; height: auto">
 
 ### The software setup:
-* OS - Linux Ubuntu LTS v. 16.04
-* C++14, GLSL, C CUDA
+* OS - Linux Ubuntu LTS v16.04
+* C++ 14, GLSL, C CUDA
 * CMake >= v3.16
 * CUDA Toolkit  v9.0
 * V4L2 driver
 * OpenGL ES v3.2
 
 ### The 3d party library:
-* [OpenCV v. 4.1.2](https://github.com/opencv/opencv)
+* [OpenCV v4.1.2](https://github.com/opencv/opencv)
 * [Mesa 3D (EGL, GLES)](https://docs.mesa3d.org/download.html)
 * [GLM](https://github.com/g-truc/glm)
 * [stb_image](https://github.com/nothings/stb)
