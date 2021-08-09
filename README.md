@@ -35,7 +35,7 @@ The essence of the project is to build a good quality stitching of images from 4
 | Embedded platform | Jetson Tegra TX2 |
 | Tripod | - |
 
-<img src="gitresource/camerasetup.jpg" width="49%" height="auto">
+<img src="gitresource/camerasetup.jpg" width="58%" height="auto">
 
 ### The software setup:
 * OS - Linux Ubuntu LTS v16.04
