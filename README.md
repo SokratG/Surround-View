@@ -52,5 +52,7 @@ The essence of the project is to build a good quality stitching of images from 4
 * [stb_image](https://github.com/nothings/stb)
 * [GLFW](https://www.glfw.org)
 * [ASSIMP v4.0.1](https://www.assimp.org/index.php/downloads)
+* [meshgrid](https://github.com/xiaohongchen1991/meshgen)
+* [Common CUDA blender](https://github.com/Avandrea/OpenCV-BlenderGPU)
 
 ### [Car model](https://www.cgtrader.com/free-3d-models/car/sport/low-poly-dodge-challenger-srt-hellcat-2015)
