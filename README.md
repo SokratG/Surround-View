@@ -49,10 +49,9 @@ The essence of the project is to build a good quality stitching of images from 4
 * [OpenCV v4.1.2](https://github.com/opencv/opencv)
 * [Mesa 3D (EGL, GLES)](https://docs.mesa3d.org/download.html)
 * [GLM](https://github.com/g-truc/glm)
-* [stb_image](https://github.com/nothings/stb)
 * [GLFW](https://www.glfw.org)
 * [ASSIMP v4.0.1](https://www.assimp.org/index.php/downloads)
 * [meshgrid](https://github.com/xiaohongchen1991/meshgen)
 * [Common CUDA blender](https://github.com/Avandrea/OpenCV-BlenderGPU)
 
-### [Car model](https://www.cgtrader.com/free-3d-models/car/sport/low-poly-dodge-challenger-srt-hellcat-2015)
+### [3D Car model](https://www.cgtrader.com/free-3d-models/car/sport/low-poly-dodge-challenger-srt-hellcat-2015)
