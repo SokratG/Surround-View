@@ -209,13 +209,11 @@ uint TextureFromFile(const char* path, const std::string& directory)
     filename = directory + '/' + filename;
 
     uint textureID = 0;
-
+   
     cv::Mat texturedata = cv::imread(path, cv::IMREAD_UNCHANGED);
 
     if (texturedata.data){
         int width = texturedata.cols, height = texturedata.rows, nrComponents = texturedata.channels();
-
-        cv::cvtColor(texturedata, texturedata, cv::COLOR_BGR2RGB);
 
         const uchar* data = texturedata.data;
 
@@ -225,10 +223,14 @@ uint TextureFromFile(const char* path, const std::string& directory)
         GLenum dataformat = GL_RGB;
         if (nrComponents == 1)
           internalformat = dataformat = GL_RED;
-        else if(nrComponents == 3)
+        else if(nrComponents == 3){
             internalformat = dataformat = GL_RGB;
-        else if(nrComponents == 4)
+	    cv::cvtColor(texturedata, texturedata, cv::COLOR_BGR2RGB);
+	}
+        else if(nrComponents == 4){
           internalformat = dataformat = GL_RGBA;
+	  cv::cvtColor(texturedata, texturedata, cv::COLOR_BGRA2RGBA);
+	}
 
         glBindTexture(GL_TEXTURE_2D, textureID);
         glTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0, dataformat, GL_UNSIGNED_BYTE, data);
