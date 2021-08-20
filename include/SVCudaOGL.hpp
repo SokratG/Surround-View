@@ -7,9 +7,6 @@
 
 #include <opencv2/core/cuda.hpp>
 
-#define GL_BGR  0x80E0
-#define GL_BGRA 0x80E1
-
 
 using uint = uint32_t;
 using int32 = int32_t;
@@ -32,7 +29,7 @@ public:
     CUDA_OGL() : cuRes(0), cuGlBuf(0), idTex(0), isInit(0) {}
     ~CUDA_OGL();
     bool init(const cv::cuda::GpuMat& frame);
-    bool copyFrom(const cv::cuda::GpuMat& frame, cudaStream_t cuStream = 0);
+    bool copyFrom(const cv::cuda::GpuMat& frame, const uint tex_id, cudaStream_t cuStream = 0);
 
 };
 

@@ -3,10 +3,13 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include <iostream>
+
+#define GL_BGR  0x80E0
+#define GL_BGRA 0x80E1
 
 uint TextureFromFile(const char* path, const std::string& directory);
 
@@ -205,15 +208,19 @@ uint TextureFromFile(const char* path, const std::string& directory)
     std::string filename = std::string(path);
     filename = directory + '/' + filename;
 
-    uint textureID;
-    glGenTextures(1, &textureID);
+    uint textureID = 0;
 
-    int width = 0, height = 0, nrComponents = 0;
+    cv::Mat texturedata = cv::imread(path, cv::IMREAD_UNCHANGED);
 
-    // stbi_set_flip_vertically_on_load(true);
-    uchar* data = stbi_load(filename.c_str(), &width, &height, &nrComponents, 0);
+    if (texturedata.data){
+        int width = texturedata.cols, height = texturedata.rows, nrComponents = texturedata.channels();
 
-    if (data){
+        cv::cvtColor(texturedata, texturedata, cv::COLOR_BGR2RGB);
+
+        const uchar* data = texturedata.data;
+
+        glGenTextures(1, &textureID);
+
         GLenum internalformat = GL_RGB;
         GLenum dataformat = GL_RGB;
         if (nrComponents == 1)
@@ -231,8 +238,6 @@ uint TextureFromFile(const char* path, const std::string& directory)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        stbi_image_free(data);
     }
     else{
         std::cerr << "Texture failed to load at path: " << path << "\n";

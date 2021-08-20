@@ -44,7 +44,7 @@ private:
     SVAppConfig svappcfg;
     int limit_iteration_init;
     int limit_iteration_show;
-    std::shared_ptr<SyncedCameraSource> source;
+    std::shared_ptr<MultiCameraSource> source;
     cv::Size cameraSize;
     cv::Size undistSize;
     cv::Size calibSize;
@@ -53,7 +53,7 @@ private:
     std::shared_ptr<SVDisplayView> dp;
     std::shared_ptr<SVStitcher> svtitch;
     std::shared_ptr<SVPedDetect> sv_ped_det;
-    std::array<SyncedCameraSource::Frame, CAM_NUMS> frames;
+    std::array<MultiCameraSource::Frame, CAM_NUMS> frames;
     std::vector<cv::cuda::GpuMat> cameradata;
     std::vector<std::vector<cv::Rect>> pedestrian_rect;
     cv::cuda::GpuMat stitch_frame;

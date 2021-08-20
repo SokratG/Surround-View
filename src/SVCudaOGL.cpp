@@ -4,6 +4,9 @@
 
 #include <cuda_gl_interop.h>
 
+#define GL_BGR  0x80E0
+#define GL_BGRA 0x80E1
+
 // ------------------------------- CUDA_OGL --------------------------------
 
 CUDA_OGL::~CUDA_OGL()
@@ -90,7 +93,7 @@ void CUDA_OGL::clear()
 
 
 
-bool CUDA_OGL::copyFrom(const cv::cuda::GpuMat& frame, cudaStream_t cuStream)
+bool CUDA_OGL::copyFrom(const cv::cuda::GpuMat& frame, const uint tex_id, cudaStream_t cuStream)
 {
 
     if (!cuRes || !cuGlBuf || !idTex)
@@ -122,6 +125,8 @@ bool CUDA_OGL::copyFrom(const cv::cuda::GpuMat& frame, cudaStream_t cuStream)
 
 
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, cuGlBuf);
+
+    glActiveTexture(GL_TEXTURE0 + tex_id);
 
     glBindTexture(GL_TEXTURE_2D, idTex);
 

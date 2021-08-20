@@ -29,7 +29,7 @@ static void addCar(std::shared_ptr<SVRender>& view_, const SVAppConfig& svcfg)
     glm::mat4 transform_car(1.f);
     transform_car = glm::translate(transform_car, glm::vec3(0.f, 1.01f, 0.f));
     transform_car = glm::rotate(transform_car, glm::radians(-90.f), glm::vec3(1.f, 0.f, 0.f));
-    transform_car = glm::scale(transform_car, glm::vec3(0.0018f));
+    transform_car = glm::scale(transform_car, glm::vec3(0.002f));
 
     bool is_Add = view_->addModel(svcfg.car_model, svcfg.car_vert_shader,
                     svcfg.car_frag_shader, transform_car);
@@ -44,7 +44,7 @@ static void addBowlConfig(ConfigBowl& cbowl)
     cbowl.transformation = transform_bowl;
     cbowl.disk_radius = 0.4f;
     cbowl.parab_radius = 0.55f;
-    cbowl.hole_radius = 0.09f;
+    cbowl.hole_radius = 0.08f;
     cbowl.a = 0.4f; cbowl.b = 0.4f; cbowl.c = 0.2f;
     cbowl.vertices_num  = 750.f;
     cbowl.y_start = 1.0f;
@@ -81,7 +81,7 @@ bool SVApp::init(const int limit_iteration_init_)
 #endif
         limit_iteration_init = limit_iteration_init_;
 
-        source = std::make_shared<SyncedCameraSource>();
+        source = std::make_shared<MultiCameraSource>();
 
         source->setFrameSize(cameraSize);
 

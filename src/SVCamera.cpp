@@ -80,7 +80,7 @@ inline void v4l2_print_format(const v4l2_format& fmt, const char* text)
 // ------------------------SECTION--------------------------
 // -----------------CameraInfo Implementation---------------
 
-bool CameraInfo::init(const std::string& devicePath_)
+bool CameraSource::init(const std::string& devicePath_)
 {
 	if (!devicePath_.empty())
 		devicePath = devicePath_;
@@ -97,7 +97,7 @@ bool CameraInfo::init(const std::string& devicePath_)
 	return initCaps() && initFormats() && initStream() && initCuda();
 }
 
-bool CameraInfo::deinit()
+bool CameraSource::deinit()
 {
 	stopStream();
 
@@ -114,7 +114,7 @@ bool CameraInfo::deinit()
 }
 
 
-bool CameraInfo::initCaps()
+bool CameraSource::initCaps()
 {
 	assert(fd > 0);
 	v4l2_capability caps;
@@ -143,7 +143,7 @@ bool CameraInfo::initCaps()
 
 
 
-bool CameraInfo::initFormats()
+bool CameraSource::initFormats()
 {
 	assert(fd > 0);
 	
@@ -161,7 +161,7 @@ bool CameraInfo::initFormats()
 }
 
 
-bool CameraInfo::initStream()
+bool CameraSource::initStream()
 {
 	
 	v4l2_format fmt;
@@ -233,7 +233,7 @@ bool CameraInfo::initStream()
 }
 
 
-bool CameraInfo::initCuda()
+bool CameraSource::initCuda()
 {
 	// check unified memory support
  	if (cuda_zero_copy){
@@ -258,7 +258,7 @@ bool CameraInfo::initCuda()
 }
 
 
-void CameraInfo::deinitCuda()
+void CameraSource::deinitCuda()
 {
 	if (cuda_zero_copy)
 		cudaFree(cuda_out_buffer);
@@ -267,7 +267,7 @@ void CameraInfo::deinitCuda()
 }
 
 
-bool CameraInfo::initMMap()
+bool CameraSource::initMMap()
 {
 	v4l2_requestbuffers req;
 	std::memset(&req, 0, sizeof(v4l2_requestbuffers));
@@ -322,7 +322,7 @@ bool CameraInfo::initMMap()
 }
 
 
-void CameraInfo::deinitMMap()
+void CameraSource::deinitMMap()
 {
 	stopStream();
 
@@ -339,7 +339,7 @@ void CameraInfo::deinitMMap()
 
 
 
-bool CameraInfo::startStream()
+bool CameraSource::startStream()
 {
 	if (streamStarted)
 		return false;
@@ -372,7 +372,7 @@ bool CameraInfo::startStream()
 	return true;
 }
 
-bool CameraInfo::stopStream()
+bool CameraSource::stopStream()
 {
 	if (!streamStarted)
 		return true;
@@ -389,7 +389,7 @@ bool CameraInfo::stopStream()
 }
 
 
-bool CameraInfo::capture(size_t timeout, cv::Mat& res) const
+bool CameraSource::capture(size_t timeout, cv::Mat& res) const
 {
 	if (!streamStarted){
 		LOG_WARNING("Calling capture while stream is not running");
@@ -485,7 +485,7 @@ bool InternalCameraParams::read(const std::string& filepath, const int num, cons
 // -----------SyncedCameraSource Implementation-------------
 
 
-int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& calibSize, const cv::Size& undistSize, const bool useUndist)
+int MultiCameraSource::init(const std::string& param_filepath, const cv::Size& calibSize, const cv::Size& undistSize, const bool useUndist)
 {
 	bool camsOpenOk = true;
 	for (auto& cam : _cams){
@@ -549,7 +549,7 @@ int SyncedCameraSource::init(const std::string& param_filepath, const cv::Size& 
 }
 
 
-bool SyncedCameraSource::startStream()
+bool MultiCameraSource::startStream()
 {
 	bool res = true;
 	for (auto& c : _cams)
@@ -557,7 +557,7 @@ bool SyncedCameraSource::startStream()
 	return res;
 }
 
-bool SyncedCameraSource::stopStream()
+bool MultiCameraSource::stopStream()
 {
 	bool res = true;
 	for (auto& c : _cams)
@@ -566,7 +566,7 @@ bool SyncedCameraSource::stopStream()
 }
 
 
-bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
+bool MultiCameraSource::capture(std::array<Frame, 4>& frames)
 {
 	fd_set fds;
 	FD_ZERO(&fds);
@@ -660,7 +660,7 @@ bool SyncedCameraSource::capture(std::array<Frame, 4>& frames)
 }
 
 
-bool SyncedCameraSource::setFrameSize(const cv::Size& size)
+bool MultiCameraSource::setFrameSize(const cv::Size& size)
 {
 	frameSize = size;
 	for(auto& c : _cams){

@@ -25,7 +25,7 @@ using uchar = unsigned char;
 #define MMAP_BUFFERS_COUNT 4
 #define CAM_NUMS 4
 
-class CameraInfo
+class CameraSource
 {
 
 private:	
@@ -50,9 +50,9 @@ public:
 	std::vector<buffer> buffers;
 
 public:
-	CameraInfo(const std::string& devicePath_ ={}, const cv::Size &frameSize_ = {}) : 
+        CameraSource(const std::string& devicePath_ ={}, const cv::Size &frameSize_ = {}) :
 		devicePath(devicePath_), frameSize(frameSize_) {}
-	~CameraInfo(){ deinit(); }
+        ~CameraSource(){ deinit(); }
 	
 
 	bool init(const std::string &devicePath_ = {});
@@ -90,7 +90,7 @@ typedef struct _ExternalCameraParams
 } ExternalCameraParams;
 
 
-class SyncedCameraSource
+class MultiCameraSource
 {
 
 public:
@@ -106,18 +106,18 @@ public:
 private:
 
 	cv::Size frameSize{CAMERA_WIDTH, CAMERA_HEIGHT};
-        std::array<CameraInfo, CAM_NUMS> _cams = {{CameraInfo("/dev/video0", frameSize),
-					    CameraInfo("/dev/video1", frameSize),
-					    CameraInfo("/dev/video2", frameSize),
-					    CameraInfo("/dev/video3", frameSize)}};
+        std::array<CameraSource, CAM_NUMS> _cams = {{CameraSource("/dev/video0", frameSize),
+                                            CameraSource("/dev/video1", frameSize),
+                                            CameraSource("/dev/video2", frameSize),
+                                            CameraSource("/dev/video3", frameSize)}};
         std::array<InternalCameraParams, CAM_NUMS> camIparams;
         std::array<CameraUndistortData, CAM_NUMS> undistFrames;
 	bool cuda_zero_copy = true;
 
 public:
 	
-	SyncedCameraSource() = default;
-	~SyncedCameraSource(){ close(); }	
+        MultiCameraSource() = default;
+        ~MultiCameraSource(){ close(); }
 
 
         int init(const std::string& param_filepath, const cv::Size& calibSize, const cv::Size& undistSize, const bool useUndist=false);
@@ -141,7 +141,7 @@ public:
 
 	}
 public:
-	const CameraInfo& getCamera(int index) const { return _cams[index]; }
+        const CameraSource& getCamera(int index) const { return _cams[index]; }
 	size_t getCamerasCount() const { return _cams.size(); }
 	cv::Size getFramesize() const { return frameSize; }
 	bool setFrameSize(const cv::Size& size); 

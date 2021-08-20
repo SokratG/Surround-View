@@ -72,7 +72,7 @@ void SVRender::texturePrepare(const cv::cuda::GpuMat& frame)
         texReady = cuOgl.init(frame);
         glBindTexture(GL_TEXTURE_2D, 0);
     }
-    auto ok = cuOgl.copyFrom(frame);
+    auto ok = cuOgl.copyFrom(frame, 0);
 }
 
 
@@ -195,8 +195,8 @@ bool SVRender::initBowl(const ConfigBowl& cbowl, const std::string& shadersurrou
     std::vector<uint> idxs;
 
     Bowl bowl(bowlmodel);
-    //isinit = bowl.generate_mesh_uv_hole(cbowl.vertices_num, cbowl.hole_radius, data, idxs);
-    isinit = bowl.generate_mesh_uv(cbowl.vertices_num, data, idxs);
+    isinit = bowl.generate_mesh_uv_hole(cbowl.vertices_num, cbowl.hole_radius, data, idxs);
+    //isinit = bowl.generate_mesh_uv(cbowl.vertices_num, data, idxs);
 
     if (!isinit)
         return false;
@@ -233,13 +233,13 @@ bool SVRender::initbowlBlackRect(const std::string& fileblackrectvert, const std
     const float y_min = bowlmodel.y_start + bias;
 
     const float rectvert[] = {
-         0.33f,  y_min,  0.47f,
-        -0.33f,  y_min,  0.47f,
-        -0.33f,  y_min, -0.47f,
+         0.4f,  y_min,  0.525f,
+        -0.4f,  y_min,  0.525f,
+        -0.4f,  y_min, -0.525f,
 
-         0.33f,  y_min,  0.47f,
-        -0.33f,  y_min, -0.47f,
-         0.33f,  y_min, -0.47f,
+         0.4f,  y_min,  0.525f,
+        -0.4f,  y_min, -0.525f,
+         0.4f,  y_min, -0.525f,
     };
 
     glGenVertexArrays(1, &OGLblackRect.VAO);
