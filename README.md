@@ -44,6 +44,7 @@ The essence of the project is to build a good quality stitching of images from 4
 * CUDA Toolkit  v9.0
 * V4L2 driver
 * OpenGL ES v3.2
+* OpenMP
 
 ### The 3d party library:
 * [OpenCV v4.1.2](https://github.com/opencv/opencv)
