@@ -371,8 +371,7 @@ void SVStitcher::save_warpptr(const std::string& warpfile, const cv::Size& res_s
 
 }
 
-static std::vector<std::vector<cv::cuda::GpuMat>> temp = std::move(std::vector<std::vector<cv::cuda::GpuMat>>(5));
-static std::vector<cv::cuda::GpuMat> hsv = std::move(std::vector<cv::cuda::GpuMat>(5));
+
 bool SVStitcher::stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& blend_img)
 {
     if (!isInit){
@@ -383,7 +382,7 @@ bool SVStitcher::stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& b
     splitRearView(imgs);
 
 #ifndef NO_OMP
-    #pragma omp parallel for default(none) shared(imgs, temp, hsv)
+    #pragma omp parallel for default(none) shared(imgs)
 #endif
     for(size_t i = 0; i < imgs_num; ++i){
 
