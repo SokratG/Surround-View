@@ -149,6 +149,7 @@ bool SVStitcher::initFromFile(const std::string& dirpath, const std::vector<cv::
     svGainComp = std::make_shared<SVChannelCompensator>(imgs_num);
     computeGains(imgs_, gpu_seam_masks);
 
+
     if (!use_filewarp_pts){
         res = prepareCutOffFrame(cpu_imgs);
         if (!res){
@@ -370,7 +371,8 @@ void SVStitcher::save_warpptr(const std::string& warpfile, const cv::Size& res_s
 
 }
 
-
+static std::vector<std::vector<cv::cuda::GpuMat>> temp = std::move(std::vector<std::vector<cv::cuda::GpuMat>>(5));
+static std::vector<cv::cuda::GpuMat> hsv = std::move(std::vector<cv::cuda::GpuMat>(5));
 bool SVStitcher::stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& blend_img)
 {
     if (!isInit){
@@ -381,7 +383,7 @@ bool SVStitcher::stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& b
     splitRearView(imgs);
 
 #ifndef NO_OMP
-    #pragma omp parallel for default(none) shared(imgs)
+    #pragma omp parallel for default(none) shared(imgs, temp, hsv)
 #endif
     for(size_t i = 0; i < imgs_num; ++i){
 
@@ -424,19 +426,22 @@ void SVStitcher::computeMaxLuminance(const cv::cuda::GpuMat& img)
   constexpr auto key_value = 0.36;
   constexpr auto min_threshold = 1.0f;
 
-  cv::cuda::cvtColor(img, gpu_lum_gray, cv::COLOR_RGB2GRAY, 0, streamObj);
+  cv::cuda::cvtColor(img, gpu_lum_gray, cv::COLOR_RGB2YCrCb, 0, photoStreamObj);
 
-  cv::cuda::max(gpu_lum_gray, cv::Scalar(min_threshold), gpu_lum_gray, streamObj);
+  cv::cuda::split(gpu_lum_gray, vecYCrCb, photoStreamObj);
 
-  cv::cuda::log(gpu_lum_gray, log_lum_map, streamObj);
-  cv::cuda::exp(log_lum_map, log_lum_map, streamObj);
+  // use Y component
+  cv::cuda::max(vecYCrCb[0], cv::Scalar(min_threshold), gpu_lum_gray, photoStreamObj);
+
+  cv::cuda::log(vecYCrCb[0], log_lum_map, photoStreamObj);
+  cv::cuda::exp(log_lum_map, log_lum_map, photoStreamObj);
 
   cv::Scalar sumlog = cv::cuda::sum(log_lum_map);
 
   const auto N = gpu_lum_gray.rows * gpu_lum_gray.cols;
   const float lum_key = key_value / (sumlog[0] / N);
 
-  cv::cuda::minMax(gpu_lum_gray, &min_color, &max_color);
+  cv::cuda::minMax(vecYCrCb[0], &min_color, &max_color);
 
   float luminance = (max_color - min_color) / 255.0f;
 
@@ -452,9 +457,9 @@ void SVStitcher::computeGains(const std::vector<cv::cuda::GpuMat>& gpu_imgs, con
 
     for (auto i = 0; i < imgs_num; ++i){
 
-        cv::cuda::resize(gpu_imgs[i], gpu_scale[i], cv::Size(), scale_factor, scale_factor, cv::INTER_NEAREST, loopStreamObj);
+        cv::cuda::resize(gpu_imgs[i], gpu_scale[i], cv::Size(), scale_factor, scale_factor, cv::INTER_NEAREST, photoStreamObj);
 
-        cv::cuda::remap(gpu_scale[i], warp_gain_gpu[i], texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, cv::Scalar(), loopStreamObj);    
+        cv::cuda::remap(gpu_scale[i], warp_gain_gpu[i], texXmap[i], texYmap[i], cv::INTER_LINEAR, cv::BORDER_REFLECT, cv::Scalar(), photoStreamObj);
 
     }
 
@@ -469,7 +474,7 @@ void SVStitcher::recomputeGain(const std::vector<cv::cuda::GpuMat>& gpu_imgs)
     computeGains(gpu_imgs, gpu_seam_masks);
 }
 
-void SVStitcher::recomputeLuminance(const cv::cuda::GpuMat& gpu_img)
+void SVStitcher::recomputeToneLuminance(const cv::cuda::GpuMat& gpu_img)
 {
     if (!isInit)
       return;

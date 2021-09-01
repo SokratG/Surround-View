@@ -11,8 +11,6 @@ const lowp float blend_factor = 1.75f;
 const lowp vec3 lum_vec = vec3(0.2126f, 0.7152f, 0.0722f);
 const lowp float lum_thresh_white = 0.85f;
 
-
-
 uniform highp float lum_white;
 uniform highp float lum_map;
 

@@ -27,12 +27,12 @@ private:
         cv::Range col_range;
         cv::cuda::GpuMat half_rear;
         // --------------
-        cv::cuda::Stream streamObj;
-        cv::cuda::Stream loopStreamObj;
+        cv::cuda::Stream streamObj, loopStreamObj, photoStreamObj;
         std::shared_ptr<SVMultiBandBlender> cuBlender;
         std::shared_ptr<SVChannelCompensator> svGainComp;
         // --------------
         std::vector<cv::cuda::GpuMat> warp_gain_gpu, gpu_scale;
+        std::vector<cv::cuda::GpuMat> vecYCrCb;
         cv::cuda::GpuMat gpu_lum_gray, lum_mean_std, log_lum_map;
         float white_luminance, tonemap_luminance;
         // --------------
@@ -68,7 +68,7 @@ public:
         bool initFromFile(const std::string& dirpath, const std::vector<cv::cuda::GpuMat>& imgs, const bool use_filewarp_pts=false);
         bool stitch(std::vector<cv::cuda::GpuMat>& imgs, cv::cuda::GpuMat& blend_img);
         void recomputeGain(const std::vector<cv::cuda::GpuMat>& gpu_imgs);
-        void recomputeLuminance(const cv::cuda::GpuMat& img);
+        void recomputeToneLuminance(const cv::cuda::GpuMat& img);
 };
 
 

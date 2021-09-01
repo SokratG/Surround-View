@@ -77,7 +77,7 @@ bool SVApp::init(const int limit_iteration_init_)
         signal(SIGINT, sig_handler);
 
 #ifndef NO_OMP
-        omp_set_num_threads(omp_get_max_threads());
+        omp_set_num_threads(svappcfg.num_pool_threads);
 #endif
         limit_iteration_init = limit_iteration_init_;
 
@@ -204,7 +204,7 @@ void SVApp::eventTask(int dtms, const std::vector<cv::cuda::GpuMat>& datas, cons
     if (std::chrono::milliseconds(time_recompute_max_luminance) >= svappcfg.time_recompute_photometric_luminance){
            time_recompute_max_luminance = 0;
            threadpool.enqueue([=](){
-                svtitch->recomputeLuminance(stitched_img);
+                svtitch->recomputeToneLuminance(stitched_img);
                 std::this_thread::sleep_for(1ms);
            });
     }
