@@ -41,6 +41,9 @@ The essence of the project is to build a good quality stitching of images from 4
 * OpenGL ES v3.2
 * OpenMP
 
+### The data processing flowchart 
+<img src="gitresource/svsoftwareflow.png" width="125%" height="auto">
+
 ### The 3d party library:
 * [OpenCV v4.1.2](https://github.com/opencv/opencv)
 * [Mesa 3D (EGL, GLES)](https://docs.mesa3d.org/download.html)
