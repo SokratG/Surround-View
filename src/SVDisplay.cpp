@@ -84,6 +84,7 @@ static void processInput(GLFWwindow* window, SVDisplayView* svdisp)
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
                 cam.processKeyboard(Camera_Movement::RIGHT, const_speed);
         }
+
 }
 
 
@@ -135,7 +136,6 @@ bool SVDisplayView::init(const int32 wnd_width, const int32 wnd_height, std::sha
         isInit = true;
         return isInit;
 }
-
 
 bool SVDisplayView::render(const cv::cuda::GpuMat& frame)
 {

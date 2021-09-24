@@ -27,7 +27,12 @@ void sig_handler(int signo)
 static void addCar(std::shared_ptr<SVRender>& view_, const SVAppConfig& svcfg)
 {
     glm::mat4 transform_car(1.f);
-    transform_car = glm::translate(transform_car, glm::vec3(0.f, 1.01f, 0.f));
+#ifdef HEMISPHERE
+     transform_car = glm::translate(transform_car, glm::vec3(0.f, 0.09f, 0.f));
+#else
+     transform_car = glm::translate(transform_car, glm::vec3(0.f, 1.01f, 0.f));
+#endif
+
     transform_car = glm::rotate(transform_car, glm::radians(-90.f), glm::vec3(1.f, 0.f, 0.f));
     transform_car = glm::scale(transform_car, glm::vec3(0.002f));
 

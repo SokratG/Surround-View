@@ -24,19 +24,19 @@ highp vec3 compute_tex_mix()
 	highp vec3 color = vec3(texture(surroundTexture, textCoord));
 	
 	// blend last and first frame
-	if (textCoord.x >= 1.0f){
-		highp vec2 tex_cord = vec2(0.0f, textCoord.y); 
-		// weight coefficient for blending 
-		mediump float alpha = textCoord.x / blend_factor; 
-		color = mix(color, vec3(texture(surroundTexture, tex_cord)), alpha);
-	}
+        if (textCoord.x >= 1.0f){
+                highp vec2 tex_cord = vec2(0.0f, textCoord.y);
+                // weight coefficient for blending
+                mediump float alpha = textCoord.x / blend_factor;
+                color = mix(color, vec3(texture(surroundTexture, tex_cord)), alpha);
+        }
 
-	if (textCoord.x <= 0.0f){
-		highp vec2 tex_cord = vec2(1.0f, textCoord.y); 
-		// weight coefficient for blending 
-		mediump float alpha = tex_cord.x / blend_factor; 
-		color = mix(color, vec3(texture(surroundTexture, tex_cord)), alpha);
-	}
+        if (textCoord.x <= 0.0f){
+                highp vec2 tex_cord = vec2(1.0f, textCoord.y);
+                // weight coefficient for blending
+                mediump float alpha = tex_cord.x / blend_factor;
+                color = mix(color, vec3(texture(surroundTexture, tex_cord)), alpha);
+        }
 
 	return color;
 }
@@ -70,15 +70,15 @@ highp vec3 reinhard_jodie_tonemap(vec3 c_in)
 }
 
 void main()
-{ 	
+{
 
 	highp vec3 color = compute_tex_mix();
 	
-	highp float white_luminance = lum_white > lum_thresh_white ? lum_thresh_white : lum_white; 
+        highp float white_luminance = lum_white > lum_thresh_white ? lum_thresh_white : lum_white;
 
-	color = reinhard_tonemap(color, white_luminance);
+        color = reinhard_tonemap(color, white_luminance);
 
-	color = gamma_correction(color, gamma_coef);
+        color = gamma_correction(color, gamma_coef);
 	
 	highp vec4 color_a = vec4(color, 1.f);
 

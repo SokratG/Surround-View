@@ -3,14 +3,12 @@
 #include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudaarithm.hpp>
 
-
 SVRender::SVRender(const int32 wnd_width_, const int32 wnd_height_) :
     wnd_width(wnd_width_), wnd_height(wnd_height_), aspect_ratio(0.f), texReady(false),
     white_luminance(1.0), tonemap_luminance(1.0)
 {
 
 }
-
 
 
 void SVRender::render(const Camera& cam, const cv::cuda::GpuMat& frame)
@@ -82,9 +80,11 @@ void SVRender::drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame
     auto view = cam.getView();
     auto projection = glm::perspective(glm::radians(cam.getCamZoom()), aspect_ratio, 0.1f, 100.f);
 
-
+#ifdef HEMISPHERE
+    model = glm::scale(model, glm::vec3(3.f, 3.f, 3.f));
+#else
     model = glm::scale(model, glm::vec3(5.f, 5.f, 5.f));
-
+#endif
     OGLbowl.OGLShader.useProgramm();
     OGLbowl.OGLShader.setMat4("model", model);
     OGLbowl.OGLShader.setMat4("view", view);
@@ -97,6 +97,7 @@ void SVRender::drawSurroundView(const Camera& cam, const cv::cuda::GpuMat& frame
     glBindVertexArray(OGLbowl.VAO);
 
     glDrawElements(GL_TRIANGLE_STRIP, OGLbowl.indexBuffer, GL_UNSIGNED_INT, 0);
+
 }
 
 void SVRender::drawModel(const Camera& cam)
@@ -120,6 +121,16 @@ void SVRender::drawModel(const Camera& cam)
 void SVRender::drawBlackRect(const Camera& cam)
 {
     glm::mat4 model(1.f);
+
+#ifdef HEMISPHERE
+    const float y_min = 0.08f;
+#else
+    constexpr auto bias = 1e-4;
+    const float y_min = bowlmodel.y_start + bias;
+#endif
+
+    model = glm::translate(model, glm::vec3(0.f, y_min, 0.f));
+
     auto view = cam.getView();
     auto projection = glm::perspective(glm::radians(cam.getCamZoom()), aspect_ratio, 0.1f, 100.f);
 
@@ -194,8 +205,16 @@ bool SVRender::initBowl(const ConfigBowl& cbowl, const std::string& shadersurrou
     std::vector<float> data;
     std::vector<uint> idxs;
 
+    //
+
+#ifdef HEMISPHERE
+    HemiSphere bowl(128, 128);
+    isinit = bowl.generate_mesh_uv(data, idxs);
+#else
     Bowl bowl(bowlmodel);
     isinit = bowl.generate_mesh_uv_hole(cbowl.vertices_num, cbowl.hole_radius, data, idxs);
+#endif
+
     //isinit = bowl.generate_mesh_uv(cbowl.vertices_num, data, idxs);
 
     if (!isinit)
@@ -228,18 +247,15 @@ bool SVRender::initbowlBlackRect(const std::string& fileblackrectvert, const std
     if (!isinit)
         return false;
 
-    constexpr auto bias = 1e-4;
-
-    const float y_min = bowlmodel.y_start + bias;
 
     const float rectvert[] = {
-         0.4f,  y_min,  0.525f,
-        -0.4f,  y_min,  0.525f,
-        -0.4f,  y_min, -0.525f,
+         0.4f,  0.0f,  0.525f,
+        -0.4f,  0.0f,  0.525f,
+        -0.4f,  0.0f, -0.525f,
 
-         0.4f,  y_min,  0.525f,
-        -0.4f,  y_min, -0.525f,
-         0.4f,  y_min, -0.525f,
+         0.4f,  0.0f,  0.525f,
+        -0.4f,  0.0f, -0.525f,
+         0.4f,  0.0f, -0.525f,
     };
 
     glGenVertexArrays(1, &OGLblackRect.VAO);
