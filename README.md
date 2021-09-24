@@ -34,7 +34,7 @@ The essence of the project is to build a good quality stitching of images from 4
 
 ### The software setup:
 * OS - Linux Ubuntu LTS v16.04
-* C++ 14, GLSL, C CUDA
+* C++ 14, Python 3.6, GLSL, C CUDA
 * CMake >= v3.16
 * CUDA Toolkit  v9.0
 * V4L2 driver
