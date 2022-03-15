@@ -13,16 +13,7 @@
 
 #define LOG_USE
 
-static bool finish = false;
-void sig_handler(int signo)
-{
-        if (signo == SIGINT){
-                finish = true;
-                std::cout << "Signal recieved\n";
-        }
-}
-
-
+bool finish = false;
 
 static void addCar(std::shared_ptr<SVRender>& view_, const SVAppConfig& svcfg)
 {
@@ -79,7 +70,6 @@ void SVApp::release()
 
 bool SVApp::init(const int limit_iteration_init_)
 {
-        signal(SIGINT, sig_handler);
 
 #ifndef NO_OMP
         omp_set_num_threads(svappcfg.num_pool_threads);
@@ -100,7 +90,6 @@ bool SVApp::init(const int limit_iteration_init_)
 
 #ifndef GL_USE
         cv::namedWindow(svappcfg.win1, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
-        cv::namedWindow(svappcfg.win2, cv::WINDOW_AUTOSIZE | cv::WINDOW_OPENGL);
 #endif
         source->startStream();
 
@@ -109,8 +98,6 @@ bool SVApp::init(const int limit_iteration_init_)
         svtitch = std::make_shared<SVStitcher>(svappcfg.numbands, svappcfg.scale_factor);
         if (usePedDetect)
             sv_ped_det = std::make_shared<SVPedDetect>(CAM_NUMS, svappcfg.scale_factor);
-
-        //cv::VideoWriter invid("stream.avi", cv::VideoWriter::fourcc('D', 'I', 'V', 'X'), 20, cameraSize);
 
         auto init = false;
         while (!svtitch->getInit() && limit_iteration_init != 0 && !finish){
@@ -122,7 +109,8 @@ bool SVApp::init(const int limit_iteration_init_)
                 }
 
                 std::vector<cv::cuda::GpuMat> datas {cv::cuda::GpuMat(), frames[0].gpuFrame, frames[1].gpuFrame, frames[2].gpuFrame, frames[3].gpuFrame};
-                //init = svtitch->init(datas);
+                //init = svtitch->init(datas); // this part include autocalibration with features detection
+
                 init = svtitch->initFromFile(svappcfg.calib_folder, datas, false);
 #ifdef GL_USE
                 if (init){
@@ -151,7 +139,7 @@ void SVApp::run()
 {
     auto lastTick = std::chrono::high_resolution_clock::now();
     time_recompute_gain = 0;
-    for (; !finish; ){
+    while (!finish){
 
             if (!source->capture(frames)){
                     std::cerr << "capture failed\n";

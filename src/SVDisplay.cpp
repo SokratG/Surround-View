@@ -1,6 +1,8 @@
 #include <SVDisplay.hpp>
 
 
+extern bool finish; // from SVApp
+
 float lastX = 1280 / 2.f; // last x pos cursor
 float lastY = 720 / 2.f; // last y pos cursor
 float deltaTime = 0.f;
@@ -63,6 +65,10 @@ static void processInput(GLFWwindow* window, SVDisplayView* svdisp)
         }
         if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE) {
                 topview_key_press = false;
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+                finish = true;
         }
 
         /* reset camera position */
