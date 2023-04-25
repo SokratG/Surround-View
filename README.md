@@ -20,9 +20,6 @@ The essence of the project is to build a good quality stitching of images from 4
 ### The top view:
 <img src="gitresource/demotopview.gif" width="65%" height="auto">
 
-### The 3D hemisphere view:
-<img src="gitresource/hemishpere.png" width="65%" height="auto">
-
 ### The hardware setup:
 | Device type |  Device name |
 |-------------|--------------|
